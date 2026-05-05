@@ -6,6 +6,7 @@ import type {
   ReactNode,
 } from 'react';
 import {
+  ArrowLeft,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -21,7 +22,6 @@ import toast from 'react-hot-toast';
 import { cn } from '../../lib/utils';
 import { getDocumentRoot, isInternalRootPage } from '../../lib/documents';
 import { useCodaStore } from '../../store/useCodaStore';
-import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { DropdownMenuContent, DropdownMenuItem } from '../ui/DropdownMenu';
 import { Input } from '../ui/Input';
@@ -29,15 +29,18 @@ import { Separator } from '../ui/Separator';
 import { ShareDialog } from '../sharing/ShareDialog';
 import type { Page } from '../type/typeScript';
 import { PageIconPicker } from './PageIconPicker';
+import { Link } from 'react-router-dom';
 
 export const PageSidebar = ({
   docId,
   activePageId,
   onSelectPage,
+  isCollapsed = false,
 }: {
   docId: string;
   activePageId: string | null;
   onSelectPage: (id: string) => void;
+  isCollapsed?: boolean;
 }) => {
   const { pages, addPage } = useCodaStore();
   const documentRoot = getDocumentRoot(pages, docId);
@@ -52,22 +55,33 @@ export const PageSidebar = ({
     onSelectPage(addPage(docId));
   };
 
+  if (isCollapsed) return null;
+
   return (
     <aside className="hidden h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <Badge variant="secondary">Doc</Badge>
-            <h2 className="mt-2 text-sm font-semibold text-slate-950">Paginas</h2>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950"
+              aria-label="Volver al workspace"
+            >
+              <ArrowLeft size={17} /> Puesto de trabajo
+            </Link>
+
+            <h2 className="mt-2 max-w-48 truncate text-sm font-semibold text-slate-950">
+              {documentRoot?.title || 'Documento'}
+            </h2>
           </div>
           <Button type="button" variant="outline" size="icon" onClick={createPage} aria-label="Nueva pagina">
             <Plus size={16} />
           </Button>
         </div>
-        <Input placeholder="Buscar pagina..." className="h-8" />
+
+        <Separator />
       </div>
 
-      <Separator />
 
       <div className="flex-1 overflow-y-auto p-2">
         {rootPages.length > 0 ? (

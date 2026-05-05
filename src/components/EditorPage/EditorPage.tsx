@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, Plus, Share2 } from 'lucide-react';
+import { ArrowLeft, FileText, PanelLeftClose, PanelLeftOpen, Plus, Share2 } from 'lucide-react';
 import { useCodaStore } from '../../store/useCodaStore';
 import { getDocumentRoot } from '../../lib/documents';
-import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Separator } from '../ui/Separator';
 import { ShareDialog } from '../sharing/ShareDialog';
@@ -15,6 +14,7 @@ const EditorPage = () => {
   const { pages, addPage } = useCodaStore();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const docPages = useMemo(
     () => pages.filter((page) => page.docId === docId),
@@ -55,54 +55,33 @@ const EditorPage = () => {
         docId={docId || ''}
         activePageId={visibleActivePageId}
         onSelectPage={(id) => setActivePageId(id)}
+        isCollapsed={isSidebarCollapsed}
       />
 
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur">
-          <Link
-            to="/"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
-            aria-label="Volver al workspace"
-          >
-            <ArrowLeft size={17} />
-          </Link>
+         
 
           <Separator className="h-6 w-px" />
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-base">{displayedRootPage?.icon || '📄'}</span>
-              <p className="truncate text-sm font-medium text-slate-950">
-                {displayedRootPage?.title || 'Documento'}
-              </p>
-              <Badge variant="secondary" className="hidden md:inline-flex">
-                Local
-              </Badge>
-            </div>
-            <p className="truncate text-xs text-slate-500">
-              {currentPage ? `${currentPage.icon || '📝'} ${currentPage.title}` : 'Sin pagina seleccionada'}
-            </p>
-          </div>
-
-          <Button variant="outline" size="sm" icon={<Plus size={15} />} onClick={createPage}>
-            Pagina
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            aria-label={isSidebarCollapsed ? 'Mostrar sidebar' : 'Ocultar sidebar'}
+          >
+            {isSidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
           </Button>
+
           <Button
             variant="outline"
+            className='absolute right-4'
             size="sm"
             icon={<Share2 size={15} />}
             onClick={() => setShareTarget('page')}
             disabled={!currentPage}
           >
             Pagina
-          </Button>
-          <Button
-            size="sm"
-            icon={<Share2 size={15} />}
-            onClick={() => setShareTarget('workspace')}
-            disabled={!displayedRootPage}
-          >
-            Puesto
           </Button>
         </header>
 
