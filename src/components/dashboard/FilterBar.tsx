@@ -2,7 +2,15 @@ import { Clock, Search, Share2, Star } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
-export const FilterBar = ({ onSearch }: { onSearch: (val: string) => void }) => {
+export const FilterBar = ({
+  onSearch,
+  activeFilter = 'recientes',
+  onFilterChange,
+}: {
+  onSearch: (val: string) => void;
+  activeFilter?: string;
+  onFilterChange?: (filter: string) => void;
+}) => {
   const filters = [
     { id: 'recientes', label: 'Recientes', icon: Clock },
     { id: 'favoritos', label: 'Favoritos', icon: Star },
@@ -19,11 +27,20 @@ export const FilterBar = ({ onSearch }: { onSearch: (val: string) => void }) => 
         />
       </div>
       <div className="flex gap-2 overflow-x-auto">
-        {filters.map((filter) => (
-          <Button key={filter.id} variant="outline" size="sm" icon={<filter.icon size={14} />}>
-            {filter.label}
-          </Button>
-        ))}
+        {filters.map((filter) => {
+          const isActive = activeFilter === filter.id;
+          return (
+            <Button
+              key={filter.id}
+              variant={isActive ? 'secondary' : 'outline'}
+              size="sm"
+              icon={<filter.icon size={14} />}
+              onClick={() => onFilterChange?.(filter.id)}
+            >
+              {filter.label}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,0 +1,89 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getFirebaseAuth } from '../api/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Card } from '../components/ui/Card';
+import toast from 'react-hot-toast';
+import { Mail, Lock } from 'lucide-react';
+
+export const LoginView = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Por favor, ingresa tu correo y contraseña.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const auth = getFirebaseAuth();
+      await signInWithEmailAndPassword(auth, email, password);
+      toast.success('Sesión iniciada correctamente');
+      navigate('/');
+    } catch (error: any) {
+      console.error(error);
+      toast.error('Credenciales inválidas o error al iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md p-8 shadow-lg">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-950">
+            <span className="text-xl font-bold text-white">N</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950">Bienvenido de nuevo</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Ingresa a tu cuenta para acceder a Notas
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700" htmlFor="email">
+              Correo electrónico
+            </label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="tu@correo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              icon={<Mail size={16} />}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700" htmlFor="password">
+              Contraseña
+            </label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              icon={<Lock size={16} />}
+              required
+            />
+          </div>
+
+          <Button type="submit" className="mt-6 w-full" disabled={loading}>
+            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+          </Button>
+        </form>
+      </Card>
+    </div>
+  );
+};

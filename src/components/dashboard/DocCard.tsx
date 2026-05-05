@@ -1,4 +1,4 @@
-import { Edit2, MoreVertical, Share2, Trash } from 'lucide-react';
+import { Edit2, MoreVertical, Share2, Star, StarOff, Trash } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -18,7 +18,15 @@ export const DocCard = ({ doc }: { doc: Page }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(doc.title);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { removeDocument, updatePageIcon, updatePageTitle } = useCodaStore();
+  const { removeDocument, updatePageIcon, updatePageTitle, togglePageFavorite } = useCodaStore();
+
+  const handleToggleFavorite = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    togglePageFavorite(doc.id);
+    toast.success(doc.isFavorite ? 'Quitado de favoritos' : 'Añadido a favoritos');
+    setShowMenu(false);
+  };
 
   const handleDelete = (e: MouseEvent) => {
     e.preventDefault();
@@ -92,7 +100,10 @@ export const DocCard = ({ doc }: { doc: Page }) => {
               }}
             />
           ) : (
-            <h3 className="truncate text-sm font-medium text-slate-950">{doc.title}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="truncate text-sm font-medium text-slate-950">{doc.title}</h3>
+              {doc.isFavorite && <Star size={14} className="fill-yellow-400 text-yellow-400" />}
+            </div>
           )}
           <p className="mt-1 text-xs text-slate-500">Editado recientemente</p>
         </div>
@@ -113,6 +124,19 @@ export const DocCard = ({ doc }: { doc: Page }) => {
       {showMenu && (
         <div ref={menuRef} className="absolute right-3 top-12 z-30">
           <DropdownMenuContent>
+            <DropdownMenuItem onClick={handleToggleFavorite}>
+              {doc.isFavorite ? (
+                <>
+                  <StarOff size={14} />
+                  Quitar favorito
+                </>
+              ) : (
+                <>
+                  <Star size={14} />
+                  Añadir favorito
+                </>
+              )}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleRename}>
               <Edit2 size={14} />
               Renombrar

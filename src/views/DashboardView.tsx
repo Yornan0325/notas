@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Plus } from 'lucide-react';
 import { useCodaStore } from '../store/useCodaStore';
@@ -12,14 +12,32 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 
 export const DashboardView = () => {
-  const { pages, addPage } = useCodaStore();
+  const { pages, shares, addPage } = useCodaStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('recientes');
   const navigate = useNavigate();
 
-  const rootDocuments = getDocumentRoots(pages).filter((page) =>
-    page.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDocs = useMemo(() => {
+    let docs = getDocumentRoots(pages).filter((page) =>
+      page.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    if (activeFilter === 'favoritos') {
+      docs = docs.filter((page) => page.isFavorite);
+    } else if (activeFilter === 'compartidos') {
+      docs = docs.filter((page) => shares.some((share) => share.docId === page.docId));
+    }
+
+    // "recientes" es el sort por defecto
+    docs.sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return docs;
+  }, [pages, shares, searchQuery, activeFilter]);
 
   const handleCreateDoc = (title: string) => {
     const newDocId = crypto.randomUUID();
@@ -48,10 +66,14 @@ export const DashboardView = () => {
           </Button>
         </div>
 
-        <FilterBar onSearch={(val) => setSearchQuery(val)} />
+        <FilterBar
+          onSearch={(val) => setSearchQuery(val)}
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+        />
 
-        {rootDocuments.length > 0 ? (
-          <ModuleGrid docs={rootDocuments} />
+        {filteredDocs.length > 0 ? (
+          <ModuleGrid docs={filteredDocs} />
         ) : (
           <Card className="flex flex-col items-center justify-center border-dashed px-6 py-16 text-center">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-slate-100 text-slate-500">

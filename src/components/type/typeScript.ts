@@ -31,6 +31,7 @@ export interface Page {
   docId: string;
   icon?: string;
   isDocumentRoot?: boolean;
+  isFavorite?: boolean;
   createdAt?: string;
   updatedAt?: string;
   synced?: boolean;

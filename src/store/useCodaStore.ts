@@ -40,6 +40,7 @@ interface CodaState {
   duplicatePage: (id: string) => string | null;
   updatePageTitle: (id: string, title: string) => void;
   updatePageIcon: (id: string, icon: string) => void;
+  togglePageFavorite: (id: string) => void;
   removePage: (id: string) => void;
   removeDocument: (docId: string) => void;
   addShare: (share: {
@@ -160,6 +161,13 @@ export const useCodaStore = create<CodaState>()(
         set((state) => ({
           pages: state.pages.map((page) =>
             page.id === id ? { ...page, icon, updatedAt: now(), synced: false } : page
+          ),
+        })),
+
+      togglePageFavorite: (id) =>
+        set((state) => ({
+          pages: state.pages.map((page) =>
+            page.id === id ? { ...page, isFavorite: !page.isFavorite, updatedAt: now(), synced: false } : page
           ),
         })),
 

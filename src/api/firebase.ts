@@ -17,6 +17,7 @@ import {
   uploadBytes,
   type FirebaseStorage,
 } from 'firebase/storage';
+import { getAuth, type Auth } from 'firebase/auth';
 import type { Block, Page } from '../components/type/typeScript';
 import type { ShareInvite } from '../components/type/typeScript';
 
@@ -34,6 +35,7 @@ const workspaceId = import.meta.env.VITE_FIREBASE_WORKSPACE_ID || 'default';
 let app: FirebaseApp | null = null;
 let firestore: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
+let auth: Auth | null = null;
 
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
@@ -52,12 +54,24 @@ const getFirebaseServices = () => {
     app = initializeApp(firebaseConfig);
     firestore = getFirestore(app);
     storage = getStorage(app);
+    auth = getAuth(app);
   }
 
   return {
     db: firestore as Firestore,
     storage: storage as FirebaseStorage,
+    auth: auth as Auth,
   };
+};
+
+export const getFirebaseAuth = () => {
+  const { auth } = getFirebaseServices();
+  return auth;
+};
+
+export const getFirestoreDB = () => {
+  const { db } = getFirebaseServices();
+  return db;
 };
 
 const workspacePath = (db: Firestore) => doc(db, 'workspaces', workspaceId);

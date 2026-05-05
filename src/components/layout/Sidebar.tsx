@@ -1,4 +1,4 @@
-import { Bell, FileText, Folder, Home, Settings } from 'lucide-react';
+import { FileText, Folder, Home, Settings, UserPlus } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { Separator } from '../ui/Separator';
@@ -9,7 +9,8 @@ export const Sidebar = ({ mode }: { mode: string }) => {
 
   const navItems = [
     { icon: Home, label: 'Inicio', path: '/' },
-    { icon: Bell, label: 'Notificaciones', path: '/notifications' },
+    // { icon: Bell, label: 'Notificaciones', path: '/notifications' },
+    { icon: UserPlus, label: 'Invitaciones', path: '/shares' },
   ];
 
   return (
@@ -17,16 +18,6 @@ export const Sidebar = ({ mode }: { mode: string }) => {
       data-mode={mode}
       className="hidden h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-3 text-slate-700 md:flex"
     >
-      <div className="mb-3 flex items-center gap-2 px-2 py-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-950 text-sm font-bold text-white">
-          C
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-slate-950">Notas</p>
-          <p className="text-xs text-slate-500">Coda workspace</p>
-        </div>
-      </div>
-
       <WorkspaceNav />
       <Separator className="my-3" />
 
