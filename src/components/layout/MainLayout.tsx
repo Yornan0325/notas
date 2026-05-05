@@ -1,18 +1,23 @@
 // src/components/layout/MainLayout.tsx
+import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 
-export const MainLayout = ({ children, mode = 'dashboard' }) => {
+interface MainLayoutProps {
+  children: ReactNode;
+  mode?: 'dashboard' | 'editor' | string;
+}
+
+export const MainLayout = ({ children, mode = 'dashboard' }: MainLayoutProps) => {
   return (
-    <div className="flex h-screen bg-[#1f1f1f] overflow-hidden">
-      {/* Sidebar general de Coda */}
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-950">
       <Sidebar mode={mode} /> 
-      
-      <div className="flex-1 flex flex-col min-w-0 bg-white shadow-2xl overflow-hidden">
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-slate-50">
         <TopBar />
-        <div className="flex-1 overflow-y-auto bg-[#f9f9f9]">
+        <main className="flex-1 overflow-y-auto">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

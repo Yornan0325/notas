@@ -1,26 +1,31 @@
 import axios from 'axios';
 import type { Block } from '../components/type/typeScript';
 
-// REEMPLAZA ESTA URL con la que copiaste de tu App Script (la que termina en /exec)
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxxLZxiSQx0HIK5iei59gCvKUL-7sTwFZZIbJEkUNaJDL1lDWzHFEDiOPJBf1YLJJro/exec';
+const WEB_APP_URL =
+  'https://script.google.com/macros/s/AKfycbxxLZxiSQx0HIK5iei59gCvKUL-7sTwFZZIbJEkUNaJDL1lDWzHFEDiOPJBf1YLJJro/exec';
 
+interface SheetBlockRow {
+  id: string;
+  page_id?: string;
+  tipo?: Block['type'];
+  contenido?: string;
+}
 
 export const syncToSheets = async (blocks: Block[], docName: string) => {
   try {
     const dataToSave = {
       sheet: docName,
-      values: blocks.map(b => ({
-        id: b.id,
-        page_id: b.pageId,
-        tipo: b.type,
-        contenido: b.content,
-        fecha: new Date().toISOString()
-      }))
+      values: blocks.map((block) => ({
+        id: block.id,
+        page_id: block.pageId,
+        tipo: block.type,
+        contenido: block.content,
+        fecha: new Date().toISOString(),
+      })),
     };
 
     console.log(`Enviando ${blocks.length} bloques a la hoja "${docName}"...`);
 
-    // Usamos fetch con 'no-cors' para enviarlo a Google Apps Script sin bloqueo de red
     await fetch(WEB_APP_URL, {
       method: 'POST',
       mode: 'no-cors',
@@ -30,26 +35,26 @@ export const syncToSheets = async (blocks: Block[], docName: string) => {
       body: JSON.stringify(dataToSave),
     });
 
-    return true; 
+    return true;
   } catch (error) {
-    console.error("Error en la sincronización:", error);
+    console.error('Error en la sincronizacion:', error);
     return false;
   }
 };
 
-
-export const fetchFromSheets = async () => {
+export const fetchFromSheets = async (): Promise<Block[]> => {
   try {
-    const response = await axios.get(`${WEB_APP_URL}?sheet=Bloques`);
-    // Google Sheets nos devuelve un array de objetos
-    return response.data.map((row: any) => ({
+    const response = await axios.get<SheetBlockRow[]>(`${WEB_APP_URL}?sheet=Bloques`);
+
+    return response.data.map((row) => ({
       id: row.id,
+      pageId: row.page_id || '',
       type: row.tipo || 'text',
-      content: row.contenido,
-      synced: true // Si viene de Sheets, ya está sincronizado
+      content: row.contenido || '',
+      synced: true,
     }));
   } catch (error) {
-    console.error("Error cargando desde Sheets:", error);
+    console.error('Error cargando desde Sheets:', error);
     return [];
   }
 };

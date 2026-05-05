@@ -1,10 +1,12 @@
 // src/components/ui/IconContainer.tsx
+import type { LucideIcon } from 'lucide-react';
+
 export const IconContainer = ({ 
   icon: Icon, 
 //   color = 'blue', 
   size = 'md' 
 }: { 
-  icon: any, 
+  icon: LucideIcon, 
   color?: string, 
   size?: 'sm' | 'md' | 'lg' 
 }) => {

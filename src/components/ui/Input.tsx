@@ -1,16 +1,24 @@
-// src/components/ui/Input.tsx
-import React from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 
-export const Input = ({ icon, ...props }: { icon?: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) => {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  icon?: ReactNode;
+}
+
+export const Input = ({ icon, className, ...props }: InputProps) => {
   return (
-    <div className="relative w-full group">
+    <div className="relative w-full">
       {icon && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors">
+        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
           {icon}
         </div>
       )}
-      <input 
-        className={`w-full bg-gray-50 border border-gray-100 rounded-xl py-2.5 text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-50 focus:bg-white focus:border-blue-200 placeholder:text-gray-400 ${icon ? 'pl-10 pr-4' : 'px-4'}`}
+      <input
+        className={cn(
+          'flex h-9 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm text-slate-950 shadow-sm transition-colors placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 disabled:cursor-not-allowed disabled:opacity-50',
+          icon && 'pl-9',
+          className
+        )}
         {...props}
       />
     </div>

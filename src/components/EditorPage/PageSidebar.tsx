@@ -1,277 +1,317 @@
-import { useState, useRef, useEffect } from 'react';
-import { 
-  Plus, ChevronRight, ChevronDown, FileText, MoreVertical, Trash2, 
-  Edit3, PlusSquare, Copy, ExternalLink, History, EyeOff, Bookmark, 
-  Link as LinkIcon, Layers
+import { useEffect, useRef, useState } from 'react';
+import type {
+  FocusEvent,
+  KeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+} from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Edit3,
+  FileText,
+  MoreHorizontal,
+  Plus,
+  PlusSquare,
+  Share2,
+  Trash2,
 } from 'lucide-react';
-import { useCodaStore } from '../../store/useCodaStore';
-import type { Page } from '../type/typeScript';
 import toast from 'react-hot-toast';
+import { cn } from '../../lib/utils';
+import { getDocumentRoot, isInternalRootPage } from '../../lib/documents';
+import { useCodaStore } from '../../store/useCodaStore';
+import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
+import { DropdownMenuContent, DropdownMenuItem } from '../ui/DropdownMenu';
+import { Input } from '../ui/Input';
+import { Separator } from '../ui/Separator';
+import { ShareDialog } from '../sharing/ShareDialog';
+import type { Page } from '../type/typeScript';
+import { PageIconPicker } from './PageIconPicker';
 
-export const PageSidebar = ({ docId, activePageId, onSelectPage }: { 
-  docId: string, 
-  activePageId: string | null, 
-  onSelectPage: (id: string) => void 
+export const PageSidebar = ({
+  docId,
+  activePageId,
+  onSelectPage,
+}: {
+  docId: string;
+  activePageId: string | null;
+  onSelectPage: (id: string) => void;
 }) => {
   const { pages, addPage } = useCodaStore();
-  const rootPages = pages.filter(p => p.docId === docId && !p.parentId);
+  const documentRoot = getDocumentRoot(pages, docId);
+  const rootPages = pages.filter(
+    (page) =>
+      page.docId === docId &&
+      isInternalRootPage(page) &&
+      page.id !== documentRoot?.id
+  );
+
+  const createPage = () => {
+    onSelectPage(addPage(docId));
+  };
 
   return (
-    <div className="w-64 bg-[#1a1a1a] border-r border-gray-800 flex flex-col shrink-0 overflow-hidden">
-      <div className="p-4 flex justify-between items-center border-b border-gray-800/50">
-        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Páginas</span>
-        <button 
-          onClick={() => addPage(docId)} 
-          className="hover:bg-gray-800 p-1 rounded text-gray-400 hover:text-white transition-colors"
-        >
-          <Plus size={14} />
-        </button>
+    <aside className="hidden h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+      <div className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <Badge variant="secondary">Doc</Badge>
+            <h2 className="mt-2 text-sm font-semibold text-slate-950">Paginas</h2>
+          </div>
+          <Button type="button" variant="outline" size="icon" onClick={createPage} aria-label="Nueva pagina">
+            <Plus size={16} />
+          </Button>
+        </div>
+        <Input placeholder="Buscar pagina..." className="h-8" />
       </div>
-      <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
-        {rootPages.map(page => (
-          <PageItem 
-            key={page.id} 
-            page={page} 
-            activePageId={activePageId} 
-            onSelectPage={onSelectPage} 
-          />
-        ))}
+
+      <Separator />
+
+      <div className="flex-1 overflow-y-auto p-2">
+        {rootPages.length > 0 ? (
+          <div className="space-y-1">
+            {rootPages.map((page) => (
+              <PageItem
+                key={page.id}
+                page={page}
+                activePageId={activePageId}
+                onSelectPage={onSelectPage}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="px-3 py-8 text-center">
+            <FileText size={24} className="mx-auto text-slate-300" />
+            <p className="mt-2 text-sm font-medium text-slate-600">Sin paginas</p>
+            <p className="mt-1 text-xs text-slate-400">Crea una pagina para empezar.</p>
+          </div>
+        )}
       </div>
-    </div>
+    </aside>
   );
 };
 
-const PageItem = ({ page, activePageId, onSelectPage }: { 
-  page: Page, 
-  activePageId: string | null, 
-  onSelectPage: (id: string) => void 
+const PageItem = ({
+  page,
+  activePageId,
+  onSelectPage,
+}: {
+  page: Page;
+  activePageId: string | null;
+  onSelectPage: (id: string) => void;
 }) => {
-  const { pages, addPage, removePage, updatePageTitle } = useCodaStore();
+  const {
+    pages,
+    addPage,
+    duplicatePage,
+    removePage,
+    updatePageIcon,
+    updatePageTitle,
+  } = useCodaStore();
   const [isExpanded, setIsExpanded] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(page.title);
   const menuRef = useRef<HTMLDivElement>(null);
-  
-  const children = pages.filter(p => p.parentId === page.id);
+
+  const children = pages.filter((item) => item.parentId === page.id);
   const isActive = activePageId === page.id;
 
-  const handleDelete = (e: React.MouseEvent) => {
+  useEffect(() => {
+    const handleClickOutside = (e: globalThis.MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
+  const createSibling = (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    onSelectPage(addPage(page.docId));
+    setShowMenu(false);
+  };
+
+  const createChild = (e: ReactMouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded(true);
+    onSelectPage(addPage(page.docId, page.id));
+    setShowMenu(false);
+  };
+
+  const handleDelete = (e: ReactMouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (confirm('¿Estás seguro de que quieres eliminar esta página?')) {
+
+    if (confirm('Seguro que quieres eliminar esta pagina y sus subpaginas?')) {
       removePage(page.id);
-      toast.success('Página eliminada');
+      toast.success('Pagina eliminada');
       setShowMenu(false);
     }
   };
 
-  const handleRename = (e: React.MouseEvent) => {
+  const handleDuplicate = (e: ReactMouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const duplicatedId = duplicatePage(page.id);
+
+    if (duplicatedId) {
+      onSelectPage(duplicatedId);
+      toast.success('Pagina duplicada');
+    }
+
+    setShowMenu(false);
+  };
+
+  const handleRename = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTitle(page.title);
     setIsEditing(true);
     setShowMenu(false);
   };
 
-  const submitRename = (e: React.FocusEvent | React.KeyboardEvent) => {
+  const submitRename = (e: FocusEvent | KeyboardEvent) => {
     if ('key' in e && e.key !== 'Enter') return;
+
     setIsEditing(false);
+
     if (title.trim() && title !== page.title) {
-      updatePageTitle(page.id, title);
-      toast.success('Título actualizado');
+      updatePageTitle(page.id, title.trim());
+      toast.success('Titulo actualizado');
     } else {
       setTitle(page.title);
     }
   };
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showMenu]);
-
   return (
-    <div className="flex flex-col">
-      <div 
-        className={`group relative flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer text-sm transition-all ${
-          isActive ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-gray-800 text-gray-400 hover:text-gray-200'
-        }`}
+    <div className="relative flex flex-col">
+      <div
+        className={cn(
+          'group flex min-h-9 cursor-pointer items-center gap-1 rounded-md px-1.5 text-sm transition-colors',
+          isActive ? 'bg-slate-100 text-slate-950' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+        )}
         onClick={() => onSelectPage(page.id)}
       >
-        <button 
-          onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-          className="text-gray-600 hover:text-gray-400 shrink-0"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-white hover:text-slate-700"
+          title={isExpanded ? 'Contraer' : 'Expandir'}
         >
-          {children.length > 0 ? (isExpanded ? <ChevronDown size={14}/> : <ChevronRight size={14}/>) : <div className="w-[14px]"/>}
+          {children.length > 0 ? (
+            isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+          ) : (
+            <span className="h-3.5 w-3.5" />
+          )}
         </button>
-        
-        <FileText size={14} className={`shrink-0 ${isActive ? 'text-blue-400' : 'text-gray-500'}`} />
-        
-        <div className="flex-1 min-w-0">
+
+        <PageIconPicker value={page.icon} onSelect={(icon) => updatePageIcon(page.id, icon)} />
+
+        <div className="min-w-0 flex-1">
           {isEditing ? (
-            <input
+            <Input
               autoFocus
-              className="bg-transparent text-slate-200 focus:outline-none border-b border-blue-500 w-full"
+              className="h-7 border-slate-300 bg-white"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={submitRename}
               onKeyDown={submitRename}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
             />
           ) : (
             <span className="block truncate font-medium">{page.title}</span>
           )}
         </div>
-        
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button 
-            className="p-1 hover:bg-gray-700 rounded transition-colors"
-            onClick={(e) => { 
-                e.stopPropagation(); 
-                setShowMenu(!showMenu); 
-            }}
-          >
-            <MoreVertical size={12} />
-          </button>
-        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMenu(!showMenu);
+          }}
+          aria-label="Opciones de pagina"
+        >
+          <MoreHorizontal size={15} />
+        </Button>
 
         {showMenu && (
-          <div 
-            ref={menuRef}
-            className="fixed w-60 bg-[#2c2c2c] border border-[#3c3c3c] rounded-2xl shadow-2xl z-[100] py-1.5 backdrop-blur-2xl bg-opacity-95 overflow-hidden translate-x-60 -translate-y-[-200px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MenuItem 
-                icon={<PlusSquare size={16} />} 
-                label="Add subpage" 
-                hasSubmenu 
-                onClick={(e) => { e.stopPropagation(); addPage(page.docId, page.id); setShowMenu(false); }}
-            />
-            <MenuItem 
-                icon={<Plus size={16} />} 
-                label="Add page" 
-                hasSubmenu 
-                onClick={(e) => { e.stopPropagation(); addPage(page.docId); setShowMenu(false); }}
-            />
-            
-            <div className="border-t border-[#3c3c3c] my-1 mx-2" />
-            
-            <MenuItem 
-                icon={<Layers size={16} />} 
-                label="Page options" 
-            />
-            <MenuItem 
-                icon={<Edit3 size={16} />} 
-                label="Rename page" 
-                onClick={handleRename}
-            />
-            <MenuItem 
-                icon={<History size={16} className="rotate-180" />} 
-                label="Reorder page" 
-                hasSubmenu 
-            />
-            <MenuItem 
-                icon={<EyeOff size={16} />} 
-                label="Hide page" 
-                isPro 
-            />
-            <MenuItem 
-                icon={<Bookmark size={16} />} 
-                label="Bookmark for me" 
-            />
-            
-            <div className="border-t border-[#3c3c3c] my-1 mx-2" />
-            
-            <MenuItem 
-                icon={<LinkIcon size={16} />} 
-                label="Copy link to page" 
-                hasSubmenu 
-            />
-            <MenuItem 
-                icon={<History size={16} />} 
-                label="Open page history" 
-            />
-            <MenuItem 
-                icon={<ExternalLink size={16} />} 
-                label="Open in new tab" 
-            />
-            
-            <div className="border-t border-[#3c3c3c] my-1 mx-2" />
-            
-            <MenuItem 
-                icon={<Copy size={16} />} 
-                label="Duplicate page" 
-            />
-            <MenuItem 
-                icon={<PlusSquare size={16} />} 
-                label="Add to doc" 
-                hasSubmenu 
-            />
-            
-            <div className="border-t border-[#3c3c3c] my-1 mx-2" />
-            
-            <MenuItem 
-                icon={<Trash2 size={16} />} 
-                label="Delete page" 
-                onClick={handleDelete}
-                danger
-            />
+          <div ref={menuRef} className="absolute right-1 top-9 z-50" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuContent className="w-56">
+              <MenuItem icon={<PlusSquare size={15} />} label="Agregar subpagina" onClick={createChild} />
+              <MenuItem icon={<Plus size={15} />} label="Agregar pagina" onClick={createSibling} />
+              <Separator className="my-1" />
+              <MenuItem icon={<Edit3 size={15} />} label="Renombrar pagina" onClick={handleRename} />
+              <MenuItem
+                icon={<Share2 size={15} />}
+                label="Compartir pagina"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setIsShareOpen(true);
+                  setShowMenu(false);
+                }}
+              />
+              <MenuItem icon={<Copy size={15} />} label="Duplicar pagina" onClick={handleDuplicate} />
+              <Separator className="my-1" />
+              <MenuItem icon={<Trash2 size={15} />} label="Eliminar pagina" onClick={handleDelete} danger />
+            </DropdownMenuContent>
           </div>
         )}
       </div>
 
       {isExpanded && children.length > 0 && (
-        <div className="ml-3 border-l border-gray-800">
-          {children.map(child => (
-            <PageItem 
-              key={child.id} 
-              page={child} 
-              activePageId={activePageId} 
-              onSelectPage={onSelectPage} 
+        <div className="ml-4 border-l border-slate-200 pl-2">
+          {children.map((child) => (
+            <PageItem
+              key={child.id}
+              page={child}
+              activePageId={activePageId}
+              onSelectPage={onSelectPage}
             />
           ))}
         </div>
       )}
+
+      <ShareDialog
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        targetType="page"
+        targetId={page.id}
+        docId={page.docId}
+        title={page.title}
+      />
     </div>
   );
 };
 
-const MenuItem = ({ 
-    icon, 
-    label, 
-    hasSubmenu, 
-    isPro, 
-    onClick,
-    danger
-}: { 
-    icon: React.ReactNode, 
-    label: string, 
-    hasSubmenu?: boolean, 
-    isPro?: boolean,
-    onClick?: (e: React.MouseEvent) => void,
-    danger?: boolean
+const MenuItem = ({
+  icon,
+  label,
+  onClick,
+  danger,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick?: (e: ReactMouseEvent) => void;
+  danger?: boolean;
 }) => (
-    <button 
-        onClick={onClick}
-        className={`w-full flex items-center gap-3 px-3 py-1.5 text-[13px] transition-colors leading-relaxed ${
-            danger ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-[#3c3c3c] text-white/90'
-        }`}
-    >
-        <span className={danger ? 'text-red-400' : 'text-gray-400'}>{icon}</span>
-        <span className="flex-1 text-left">{label}</span>
-        {isPro && (
-            <span className="text-[10px] font-bold text-orange-400 border border-orange-400/30 px-1 rounded bg-orange-400/10 leading-none py-0.5 ml-2">PRO</span>
-        )}
-        {hasSubmenu && (
-            <ChevronRight size={12} className="text-gray-500" />
-        )}
-    </button>
+  <DropdownMenuItem onClick={onClick} className={danger ? 'text-red-600 hover:bg-red-50' : undefined}>
+    {icon}
+    {label}
+  </DropdownMenuItem>
 );

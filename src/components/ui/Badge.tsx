@@ -1,21 +1,46 @@
-// src/components/ui/Badge.tsx
-export const Badge = ({ 
-  children, 
-  color = 'blue' 
-}: { 
-  children: React.ReactNode, 
-  color?: 'blue' | 'green' | 'amber' | 'gray' | 'purple' 
-}) => {
-  const colors = {
-    blue: "bg-blue-50 text-blue-600 border-blue-100",
-    green: "bg-green-50 text-green-600 border-green-100",
-    amber: "bg-amber-50 text-amber-600 border-amber-100",
-    gray: "bg-gray-100 text-gray-600 border-gray-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-100"
+import type { HTMLAttributes } from 'react';
+import { cn } from '../../lib/utils';
+
+interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+  variant?: 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'destructive';
+  color?: 'blue' | 'green' | 'amber' | 'gray' | 'purple';
+}
+
+export const Badge = ({
+  children,
+  variant,
+  color,
+  className,
+  ...props
+}: BadgeProps) => {
+  const resolvedVariant =
+    variant ||
+    (color === 'green'
+      ? 'success'
+      : color === 'amber'
+        ? 'warning'
+        : color === 'gray'
+          ? 'secondary'
+          : 'default');
+
+  const variants = {
+    default: 'border-transparent bg-slate-950 text-white',
+    secondary: 'border-transparent bg-slate-100 text-slate-700',
+    outline: 'border-slate-200 text-slate-700',
+    success: 'border-transparent bg-emerald-50 text-emerald-700',
+    warning: 'border-transparent bg-amber-50 text-amber-700',
+    destructive: 'border-transparent bg-red-50 text-red-700',
   };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${colors[color]}`}>
+    <span
+      className={cn(
+        'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium',
+        variants[resolvedVariant],
+        className
+      )}
+      {...props}
+    >
       {children}
     </span>
   );

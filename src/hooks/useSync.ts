@@ -1,56 +1,116 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useCodaStore } from '../store/useCodaStore';
-import { syncToSheets } from '../api/googleSheets';
+import {
+  deleteFirebaseBlock,
+  deleteFirebasePage,
+  deleteFirebaseShare,
+  isFirebaseConfigured,
+  loadWorkspaceFromFirebase,
+  syncSharesToFirebase,
+  syncWorkspaceToFirebase,
+} from '../api/firebase';
 
 export const useSync = () => {
-  const { blocks, pages, markAsSynced } = useCodaStore();
+  const {
+    blocks,
+    pages,
+    shares,
+    markAsSynced,
+    markPagesAsSynced,
+    markSharesAsSynced,
+    setBlocks,
+    setPages,
+  } = useCodaStore();
+  const hasLoadedRemote = useRef(false);
+  const knownBlockIds = useRef<Set<string>>(new Set());
+  const knownPageIds = useRef<Set<string>>(new Set());
+  const knownShareIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const performSync = async () => {
-      // Solo procedemos si el navegador está online y hay bloques sin sincronizar
-      const pendingBlocks = blocks.filter(b => !b.synced);
-      if (pendingBlocks.length === 0 || !navigator.onLine) return;
+    if (!isFirebaseConfigured || hasLoadedRemote.current || !navigator.onLine) return;
 
-      console.log("Detectados cambios pendientes. Organizando por página...");
+    hasLoadedRemote.current = true;
 
-      // Agrupamos por pageId para que cada página sea su propia hoja en Sheets
-      const pageIdsToSync = Array.from(new Set(pendingBlocks.map(b => b.pageId)));
+    const loadRemoteWorkspace = async () => {
+      try {
+        const remoteWorkspace = await loadWorkspaceFromFirebase();
 
-      for (const pageId of pageIdsToSync) {
-        const page = pages.find(p => p.id === pageId);
-        if (!page) continue;
-
-        // Para asegurar que la hoja en Sheets refleje la página completa, 
-        // enviamos todos los bloques de esa página, no solo los pendientes.
-        const allPageBlocks = blocks.filter(b => b.pageId === pageId);
-        const sheetName = page.title || "Página sin título";
-
-        console.log(`Sincronizando hoja: "${sheetName}" (${allPageBlocks.length} bloques)`);
-        
-        const success = await syncToSheets(allPageBlocks, sheetName);
-        
-        if (success) {
-          // Marcamos como sincronizados los bloques que enviamos
-          const ids = allPageBlocks.map(b => b.id);
-          markAsSynced(ids);
-          console.log(`✓ Hoja "${sheetName}" sincronizada correctamente.`);
+        if (remoteWorkspace.pages.length > 0 || remoteWorkspace.blocks.length > 0) {
+          setPages(remoteWorkspace.pages);
+          setBlocks(remoteWorkspace.blocks);
+          knownPageIds.current = new Set(remoteWorkspace.pages.map((page) => page.id));
+          knownBlockIds.current = new Set(remoteWorkspace.blocks.map((block) => block.id));
         }
+      } catch (error) {
+        console.error('No se pudo cargar el workspace desde Firebase:', error);
       }
     };
 
-    // Escuchar cambios en el estado online
+    loadRemoteWorkspace();
+  }, [setBlocks, setPages]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+
+    const performSync = async () => {
+      const pendingBlocks = blocks.filter((block) => !block.synced);
+      const pendingPages = pages.filter((page) => !page.synced);
+      const pendingShares = shares.filter((share) => !share.synced);
+      const currentBlockIds = new Set(blocks.map((block) => block.id));
+      const currentPageIds = new Set(pages.map((page) => page.id));
+      const currentShareIds = new Set(shares.map((share) => share.id));
+      const deletedBlockIds = Array.from(knownBlockIds.current).filter(
+        (id) => !currentBlockIds.has(id)
+      );
+      const deletedPageIds = Array.from(knownPageIds.current).filter(
+        (id) => !currentPageIds.has(id)
+      );
+      const deletedShareIds = Array.from(knownShareIds.current).filter(
+        (id) => !currentShareIds.has(id)
+      );
+
+      if (
+        pendingBlocks.length === 0 &&
+        pendingPages.length === 0 &&
+        pendingShares.length === 0 &&
+        deletedBlockIds.length === 0 &&
+        deletedPageIds.length === 0 &&
+        deletedShareIds.length === 0
+      ) {
+        return;
+      }
+
+      if (!navigator.onLine) return;
+
+      try {
+        await Promise.all([
+          ...deletedBlockIds.map((id) => deleteFirebaseBlock(id)),
+          ...deletedPageIds.map((id) => deleteFirebasePage(id)),
+          ...deletedShareIds.map((id) => deleteFirebaseShare(id)),
+        ]);
+        await syncWorkspaceToFirebase(pages, blocks);
+        await syncSharesToFirebase(shares);
+        markAsSynced(blocks.map((block) => block.id));
+        markPagesAsSynced(pages.map((page) => page.id));
+        markSharesAsSynced(shares.map((share) => share.id));
+        knownBlockIds.current = currentBlockIds;
+        knownPageIds.current = currentPageIds;
+        knownShareIds.current = currentShareIds;
+      } catch (error) {
+        console.error('No se pudo sincronizar con Firebase:', error);
+      }
+    };
+
     const handleOnline = () => {
-      console.log("Conexión restaurada. Intentando sincronización...");
       performSync();
     };
+
     window.addEventListener('online', handleOnline);
-    
-    // Sincronización automática con debounce de 3 segundos
-    const timeoutId = setTimeout(performSync, 3000);
+    const timeoutId = window.setTimeout(performSync, 1200);
 
     return () => {
       window.removeEventListener('online', handleOnline);
-      clearTimeout(timeoutId);
+      window.clearTimeout(timeoutId);
     };
-  }, [blocks, pages, markAsSynced]);
+  }, [blocks, pages, shares, markAsSynced, markPagesAsSynced, markSharesAsSynced]);
 };

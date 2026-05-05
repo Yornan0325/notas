@@ -1,6 +1,6 @@
-import { Search, Clock, Star, Share2 } from 'lucide-react';
-import { Input } from '../ui/Input';
+import { Clock, Search, Share2, Star } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 
 export const FilterBar = ({ onSearch }: { onSearch: (val: string) => void }) => {
   const filters = [
@@ -10,24 +10,18 @@ export const FilterBar = ({ onSearch }: { onSearch: (val: string) => void }) => 
   ];
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-4 mb-8">
-      <div className="relative flex-1 w-full">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-        <Input icon={<Search size={18} />} 
-        placeholder="Buscar documentos..." 
-        onChange={(e) => onSearch(e.target.value)} 
-        className="w-full border border-gray-800 text-gray-500 rounded-xl py-2 pl-10 pr-4 focus:border-blue-500 outline-none transition-all"
+    <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center">
+      <div className="w-full md:max-w-md">
+        <Input
+          icon={<Search size={16} />}
+          placeholder="Buscar documentos..."
+          onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-      <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
-        {filters.map(f => (
-          <Button 
-            key={f.id}
-            variant="secondary"
-            className="flex items-center gap-2 px-4 py-3 border border-gray-800 rounded-xl text-xs font-medium text-gray-400 hover:text-gray-500 hover:border-gray-00 transition-all whitespace-nowrap"
-          >
-            <f.icon size={14} />
-            {f.label}
+      <div className="flex gap-2 overflow-x-auto">
+        {filters.map((filter) => (
+          <Button key={filter.id} variant="outline" size="sm" icon={<filter.icon size={14} />}>
+            {filter.label}
           </Button>
         ))}
       </div>

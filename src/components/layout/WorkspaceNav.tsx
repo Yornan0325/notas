@@ -1,16 +1,21 @@
-// src/components/layout/WorkspaceNav.tsx
 import { ChevronDown } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 export const WorkspaceNav = () => {
   return (
-    <div className="group flex items-center gap-3 px-3 py-2.5 bg-gray-800/30 border border-gray-700/50 rounded-2xl cursor-pointer hover:bg-gray-800 transition-all active:scale-[0.98]">
-      <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white italic shadow-lg shadow-blue-500/20">
+    <Button
+      variant="ghost"
+      className="h-auto w-full justify-start gap-3 px-2 py-2 text-left"
+      type="button"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-950 text-xs font-semibold text-white">
         Y
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold text-gray-200 truncate">Yornan's espacio de trabajo</p>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-slate-950">Yornan</p>
+        <p className="truncate text-xs font-normal text-slate-500">Espacio de trabajo</p>
       </div>
-      <ChevronDown size={14} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
-    </div>
+      <ChevronDown size={16} className="text-slate-400" />
+    </Button>
   );
 };

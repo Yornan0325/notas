@@ -1,32 +1,96 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'react';
+import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
+import { isFirebaseConfigured, uploadBlockImage } from '../../api/firebase';
 import { BlockWrapper } from './BlockWrapper';
 import { SlashMenu } from './SlashMenu';
+import type { Block } from '../type/typeScript';
 
-export const Canvas = ({ pageId, pageTitle }: { pageId: string, pageTitle: string }) => {
-  const { blocks, addBlock, updateBlock, changeBlockType, updatePageTitle, removeBlock } = useCodaStore();
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 
-  // Estado para el menú Slash
-  const [slashMenu, setSlashMenu] = useState<{ x: number, y: number, blockId: string } | null>(null);
+export const Canvas = ({
+  docId,
+  pageId,
+  pageTitle,
+}: {
+  docId: string;
+  pageId: string;
+  pageTitle: string;
+}) => {
+  const {
+    blocks,
+    addBlock,
+    updateBlock,
+    updateBlockAttachment,
+    updateImageLayout,
+    moveBlock,
+    changeBlockType,
+    updatePageTitle,
+    removeBlock,
+  } = useCodaStore();
+
+  const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
-  
-  const pageBlocks = blocks.filter(b => b.pageId === pageId);
+  const [dragState, setDragState] = useState<{
+    blockId: string;
+    targetId: string | null;
+    placement: 'before' | 'after' | 'beside';
+  } | null>(null);
 
-  const handleKeyDown = (e: React.KeyboardEvent, blockId: string) => {
-    const currentBlock = pageBlocks.find(b => b.id === blockId);
-    const currentIndex = pageBlocks.findIndex(b => b.id === blockId);
+  const pageBlocks = useMemo(
+    () => blocks.filter((block) => block.pageId === pageId),
+    [blocks, pageId]
+  );
 
-    // 1. Enter: Solo permite saltar si hay contenido previo
+  const blockRows = useMemo(() => {
+    const rows: Array<
+      | { type: 'single'; item: { block: Block; index: number } }
+      | { type: 'columns'; items: Array<{ block: Block; index: number }> }
+    > = [];
+
+    pageBlocks.forEach((block, index) => {
+      const canJoinColumns = block.type === 'image' && block.imageFlow === 'columns';
+      const lastRow = rows[rows.length - 1];
+
+      if (canJoinColumns && lastRow?.type === 'columns' && lastRow.items.length < 3) {
+        lastRow.items.push({ block, index });
+        return;
+      }
+
+      if (canJoinColumns) {
+        rows.push({ type: 'columns', items: [{ block, index }] });
+        return;
+      }
+
+      rows.push({ type: 'single', item: { block, index } });
+    });
+
+    return rows;
+  }, [pageBlocks]);
+
+  const focusNewBlock = (type: Block['type'] = 'text', afterBlockId?: string) => {
+    const newId = addBlock(type, pageId, afterBlockId);
+    setActiveBlockId(newId);
+    return newId;
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>, blockId: string) => {
+    const currentBlock = pageBlocks.find((block) => block.id === blockId);
+    const currentIndex = pageBlocks.findIndex((block) => block.id === blockId);
+
     if (e.key === 'Enter' && !e.shiftKey && !slashMenu) {
       e.preventDefault();
-      if (currentBlock && currentBlock.content.trim().length > 0) {
-        const newId = addBlock('text', pageId);
-        setActiveBlockId(newId);
-      }
+      focusNewBlock('text', blockId);
       return;
     }
 
-    // 2. Backspace: Si borra todo y sigue borrando, sube al anterior
     if (e.key === 'Backspace' && currentBlock && currentBlock.content === '') {
       if (currentIndex > 0) {
         e.preventDefault();
@@ -34,23 +98,27 @@ export const Canvas = ({ pageId, pageTitle }: { pageId: string, pageTitle: strin
         removeBlock(blockId);
         setActiveBlockId(prevBlock.id);
       }
+      return;
     }
 
-    // 3. Flechas para navegación rápida
     if (e.key === 'ArrowUp' && currentIndex > 0) {
       e.preventDefault();
       setActiveBlockId(pageBlocks[currentIndex - 1].id);
     }
+
     if (e.key === 'ArrowDown' && currentIndex < pageBlocks.length - 1) {
       e.preventDefault();
       setActiveBlockId(pageBlocks[currentIndex + 1].id);
     }
   };
 
-  const handleTextChange = (id: string, value: string, e: any) => {
+  const handleTextChange = (
+    id: string,
+    value: string,
+    e: ChangeEvent<HTMLTextAreaElement>
+  ) => {
     updateBlock(id, value);
 
-    // 2. Detectar el símbolo "/" para abrir el menú slash
     const cursorPosition = e.target.selectionStart;
     const lastChar = value[cursorPosition - 1];
 
@@ -58,71 +126,205 @@ export const Canvas = ({ pageId, pageTitle }: { pageId: string, pageTitle: strin
       const rect = e.target.getBoundingClientRect();
       setSlashMenu({
         x: rect.left,
-        y: rect.top + 30,
-        blockId: id
+        y: rect.top + 34,
+        blockId: id,
       });
     } else {
       setSlashMenu(null);
     }
   };
 
-  const handleSelectType = (type: any) => {
-    if (slashMenu) {
-      changeBlockType(slashMenu.blockId, type);
-      const currentBlock = blocks.find(b => b.id === slashMenu.blockId);
-      if (currentBlock) {
-        updateBlock(slashMenu.blockId, currentBlock.content.replace('/', ''));
+  const handleSelectType = (type: Block['type']) => {
+    if (!slashMenu) return;
+
+    changeBlockType(slashMenu.blockId, type);
+    const currentBlock = blocks.find((block) => block.id === slashMenu.blockId);
+
+    if (currentBlock) {
+      updateBlock(slashMenu.blockId, currentBlock.content.replace('/', ''));
+    }
+
+    setSlashMenu(null);
+    setActiveBlockId(slashMenu.blockId);
+  };
+
+  const handleUploadImage = async (blockId: string, file: File) => {
+    try {
+      if (!isFirebaseConfigured) {
+        const localUrl = await readFileAsDataUrl(file);
+        updateBlockAttachment(blockId, localUrl, `local://${blockId}/${file.name}`, file.name);
+        toast.success('Imagen guardada localmente');
+        return;
       }
-      setSlashMenu(null);
-      // Mantener el foco
-      setActiveBlockId(slashMenu.blockId);
+
+      const uploadedImage = await uploadBlockImage({ docId, pageId, blockId, file });
+      updateBlockAttachment(
+        blockId,
+        uploadedImage.url,
+        uploadedImage.path,
+        uploadedImage.name
+      );
+      toast.success('Imagen subida');
+    } catch (error) {
+      console.error('No se pudo subir la imagen:', error);
+
+      try {
+        const localUrl = await readFileAsDataUrl(file);
+        updateBlockAttachment(blockId, localUrl, `local://${blockId}/${file.name}`, file.name);
+        toast.success('Imagen guardada localmente');
+      } catch {
+        toast.error('No se pudo guardar la imagen');
+      }
     }
   };
 
-  // Inicialización de primer bloque si la página está vacía
+  const handlePasteImage = (block: Block, file: File) => {
+    const targetBlockId =
+      block.content.trim().length === 0 && block.type !== 'image'
+        ? block.id
+        : addBlock('image', pageId, block.id);
+
+    if (targetBlockId === block.id && block.type !== 'image') {
+      changeBlockType(block.id, 'image');
+    }
+
+    setActiveBlockId(targetBlockId);
+    handleUploadImage(targetBlockId, file);
+  };
+
+  const getImageFromClipboard = (event: ClipboardEvent) => {
+    const fileFromItems = Array.from(event.clipboardData.items)
+      .find((item) => item.type.startsWith('image/'))
+      ?.getAsFile();
+
+    if (fileFromItems) return fileFromItems;
+
+    return Array.from(event.clipboardData.files).find((file) =>
+      file.type.startsWith('image/')
+    );
+  };
+
+  const handleCanvasPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    const imageFile = getImageFromClipboard(event);
+    if (!imageFile) return;
+
+    event.preventDefault();
+
+    const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
+    if (activeBlock) {
+      handlePasteImage(activeBlock, imageFile);
+      return;
+    }
+
+    const lastBlock = pageBlocks[pageBlocks.length - 1];
+    const newBlockId = addBlock('image', pageId, lastBlock?.id);
+    setActiveBlockId(newBlockId);
+    handleUploadImage(newBlockId, imageFile);
+  };
+
+  const getDropPlacement = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const yRatio = (event.clientY - rect.top) / rect.height;
+    const xRatio = (event.clientX - rect.left) / rect.width;
+
+    if (targetBlock.type === 'image' && yRatio > 0.2 && yRatio < 0.8 && xRatio > 0.25 && xRatio < 0.75) {
+      return 'beside' as const;
+    }
+
+    return yRatio < 0.5 ? ('before' as const) : ('after' as const);
+  };
+
+  const handleImageDragOver = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
+    if (!dragState || dragState.blockId === targetBlock.id) return;
+
+    event.preventDefault();
+    const placement = getDropPlacement(event, targetBlock);
+    setDragState({ ...dragState, targetId: targetBlock.id, placement });
+  };
+
+  const handleImageDrop = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
+    if (!dragState || dragState.blockId === targetBlock.id) return;
+
+    event.preventDefault();
+    const placement = getDropPlacement(event, targetBlock);
+    moveBlock(dragState.blockId, targetBlock.id, placement);
+    setActiveBlockId(dragState.blockId);
+    setDragState(null);
+  };
+
   useEffect(() => {
     if (pageBlocks.length === 0) {
       addBlock('text', pageId);
     }
-  }, [pageId, pageBlocks.length, addBlock]);
+  }, [addBlock, pageId, pageBlocks.length]);
+
+  const renderBlock = (block: Block, index: number) => (
+    <BlockWrapper
+      key={block.id}
+      block={block}
+      index={index}
+      isFocused={activeBlockId === block.id}
+      dragPlacement={dragState?.targetId === block.id ? dragState.placement : null}
+      onAddBelow={() => focusNewBlock('text', block.id)}
+      onRemove={() => removeBlock(block.id)}
+      onImageDragStart={() => setDragState({ blockId: block.id, targetId: null, placement: 'after' })}
+      onImageDragEnd={() => setDragState(null)}
+      onImageDragOver={(event) => handleImageDragOver(event, block)}
+      onImageDrop={(event) => handleImageDrop(event, block)}
+      onUploadImage={(file) => handleUploadImage(block.id, file)}
+      onUpdateImageLayout={(layout) => updateImageLayout(block.id, layout)}
+      onUpdate={(val, e) => handleTextChange(block.id, val, e)}
+      onChangeType={(type) => changeBlockType(block.id, type)}
+      onKeyDown={(e) => handleKeyDown(e, block.id)}
+      onFocus={() => setActiveBlockId(block.id)}
+    />
+  );
 
   return (
-    <div className="flex-1 max-w-4xl mx-auto px-12 py-20 min-h-screen relative">
-      {/* SECCIÓN DE TÍTULO */}
+    <div
+      className="relative mx-auto min-h-screen max-w-4xl flex-1 px-6 py-12 md:px-12"
+      onPaste={handleCanvasPaste}
+    >
       <input
-        className="text-6xl font-black text-gray-900 mb-2 w-full outline-none border-none bg-transparent placeholder:text-gray-100 tracking-tighter"
+        className="mb-2 w-full border-none bg-transparent text-5xl font-semibold tracking-tight text-slate-950 outline-none placeholder:text-slate-200 md:text-6xl"
         value={pageTitle}
         onChange={(e) => updatePageTitle(pageId, e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
-            const newId = addBlock('text', pageId);
-            setActiveBlockId(newId);
+            focusNewBlock('text');
           }
         }}
-        placeholder="Título de la página"
+        placeholder="Titulo de la pagina"
       />
-      
+
       {pageBlocks.length === 0 && (
-        <p className="text-gray-400 text-lg mb-12">Añade una descripción o empieza a escribir...</p>
+        <p className="mb-12 text-lg text-slate-400">
+          Anade una descripcion o empieza a escribir...
+        </p>
       )}
 
-      {/* ÁREA DE BLOQUES */}
-      <div className="space-y-1 mt-10">
-        {pageBlocks.map((block) => (
-          <BlockWrapper
-            key={block.id}
-            block={block}
-            isFocused={activeBlockId === block.id}
-            onUpdate={(val, e) => handleTextChange(block.id, val, e)} 
-            onChangeType={(type) => changeBlockType(block.id, type)}
-            onKeyDown={(e) => handleKeyDown(e, block.id)}
-            onFocus={() => setActiveBlockId(block.id)}
-          />
-        ))}
+      <div className="mt-10 space-y-1">
+        {blockRows.map((row) => {
+          if (row.type === 'single') {
+            return renderBlock(row.item.block, row.item.index);
+          }
+
+          return (
+            <div
+              key={row.items.map((item) => item.block.id).join('-')}
+              className="grid grid-cols-1 gap-3 lg:grid-cols-3"
+            >
+              {row.items.map((item) => (
+                <div key={item.block.id} className="min-w-0">
+                  {renderBlock(item.block, item.index)}
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
 
-      {/* MENÚ SLASH */}
       {slashMenu && (
         <SlashMenu
           position={{ x: slashMenu.x, y: slashMenu.y }}

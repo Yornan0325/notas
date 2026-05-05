@@ -1,40 +1,46 @@
-// src/components/ui/Button.tsx
-import React from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'dark' | 'ghost' | 'danger'|'outline';
-  size?: 'sm' | 'md' | 'lg';
-  icon?: React.ReactNode;
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'primary' | 'secondary' | 'dark' | 'ghost' | 'danger' | 'destructive' | 'outline';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
+  icon?: ReactNode;
 }
 
-export const Button = ({ 
-  children, 
-  variant = 'primary', 
-  size = 'md', 
-  icon, 
-  className = '', 
-  ...props 
+export const Button = ({
+  children,
+  variant = 'default',
+  size = 'md',
+  icon,
+  className,
+  ...props
 }: ButtonProps) => {
-  const baseStyles = "inline-flex items-center justify-center gap-2 font-bold transition-all active:scale-95 rounded-xl shadow-sm";
-  
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/10",
-    outline: "border border-gray-200 text-gray-800 hover:bg-gray-50",
-    secondary: "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50",
-    dark: "bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-700",
-    ghost: "text-gray-500 hover:bg-gray-100 shadow-none border-transparent",
-    danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100"
+    default: 'bg-slate-950 text-white shadow-sm hover:bg-slate-800',
+    primary: 'bg-slate-950 text-white shadow-sm hover:bg-slate-800',
+    secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
+    dark: 'bg-slate-900 text-slate-50 hover:bg-slate-800',
+    ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-950',
+    outline: 'border border-slate-200 bg-white text-slate-900 shadow-sm hover:bg-slate-50',
+    danger: 'bg-red-50 text-red-600 hover:bg-red-100',
+    destructive: 'bg-red-600 text-white shadow-sm hover:bg-red-700',
   };
 
   const sizes = {
-    sm: "px-3 py-1.5 text-[11px]",
-    md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base"
+    sm: 'h-8 rounded-md px-3 text-xs',
+    md: 'h-9 rounded-md px-4 py-2 text-sm',
+    lg: 'h-10 rounded-md px-5 text-sm',
+    icon: 'h-9 w-9 rounded-md',
   };
 
   return (
-    <button 
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`} 
+    <button
+      className={cn(
+        'inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]',
+        variants[variant],
+        sizes[size],
+        className
+      )}
       {...props}
     >
       {icon && <span className="shrink-0">{icon}</span>}

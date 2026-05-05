@@ -1,63 +1,76 @@
-// src/components/layout/Sidebar.tsx
-import { LayoutDashboard, Bell, Folder, Settings } from 'lucide-react';
+import { Bell, FileText, Folder, Home, Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { cn } from '../../lib/utils';
+import { Separator } from '../ui/Separator';
 import { WorkspaceNav } from './WorkspaceNav';
 
-export const Sidebar = ({ mode: _mode }: { mode: string }) => {
-    const location = useLocation();
+export const Sidebar = ({ mode }: { mode: string }) => {
+  const location = useLocation();
 
-    const navItems = [
-        { icon: LayoutDashboard, label: 'Home', path: '/' },
-        { icon: Bell, label: 'Notifications', path: '/notifications' },
-    ];
+  const navItems = [
+    { icon: Home, label: 'Inicio', path: '/' },
+    { icon: Bell, label: 'Notificaciones', path: '/notifications' },
+  ];
 
-    return (
-        <aside className="w-64 bg-[#1a1a1a] text-gray-400 flex flex-col p-4 border-r border-gray-800 shrink-0 h-full">
-            {/* Logo de Coda */}
-            <div className="flex items-center gap-2 mb-8 ml-2">
-                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#1a1a1a] font-black text-lg shadow-lg shadow-white/5">
-                    C
-                </div>
-            </div>
+  return (
+    <aside
+      data-mode={mode}
+      className="hidden h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-3 text-slate-700 md:flex"
+    >
+      <div className="mb-3 flex items-center gap-2 px-2 py-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-950 text-sm font-bold text-white">
+          C
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Notas</p>
+          <p className="text-xs text-slate-500">Coda workspace</p>
+        </div>
+      </div>
 
-            {/* Menú Principal */}
-            <nav className="space-y-1 mb-10">
-                {navItems.map((item) => (
-                    <Link
-                        key={item.label}
-                        to={item.path}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all ${location.pathname === item.path
-                                ? 'bg-gray-800 text-white shadow-inner'
-                                : 'hover:bg-gray-800/50 hover:text-gray-200'
-                            }`}
-                    >
-                        <item.icon size={18} />
-                        <span className="font-medium">{item.label}</span>
-                    </Link>
-                ))}
-            </nav>
+      <WorkspaceNav />
+      <Separator className="my-3" />
 
-            {/* Selector de Workspace */}
-            <div className="mb-6">
-                <h2 className="text-[10px] font-bold text-gray-500 uppercase px-3 mb-4 tracking-[0.2em]">ESPACIO DE TRABAJO</h2>
-                <WorkspaceNav />
-            </div>
+      <nav className="space-y-1">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
 
-            {/* Carpetas o Atajos */}
-            <div className="space-y-1">
-                <button className="flex items-center gap-3 px-3 py-2 w-full text-sm hover:bg-gray-800 rounded-xl transition-colors">
-                    <Folder size={18} className="text-gray-600" />
-                    <span>Proyectos</span>
-                </button>
-            </div>
+          return (
+            <Link
+              key={item.label}
+              to={item.path}
+              className={cn(
+                'flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-950',
+                isActive ? 'bg-slate-100 text-slate-950' : 'text-slate-600'
+              )}
+            >
+              <item.icon size={16} />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
 
-            {/* Footer del Sidebar */}
-            <div className="mt-auto pt-4 border-t border-gray-800/50">
-                <button className="flex items-center gap-3 px-3 py-2 w-full text-sm hover:text-white transition-colors">
-                    <Settings size={18} />
-                    <span>Configuración</span>
-                </button>
-            </div>
-        </aside>
-    );
+      <div className="mt-6">
+        <p className="mb-2 px-2 text-xs font-medium text-slate-500">Biblioteca</p>
+        <div className="space-y-1">
+          <button className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950">
+            <Folder size={16} />
+            Proyectos
+          </button>
+          <button className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950">
+            <FileText size={16} />
+            Documentos
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-auto">
+        <Separator className="mb-3" />
+        <button className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950">
+          <Settings size={16} />
+          Configuracion
+        </button>
+      </div>
+    </aside>
+  );
 };

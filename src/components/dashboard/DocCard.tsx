@@ -1,117 +1,149 @@
-import { FileText, MoreVertical, Trash, Edit2 } from 'lucide-react';
+import { Edit2, MoreVertical, Share2, Trash } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Page } from '../type/typeScript';
-import { useState, useRef, useEffect } from 'react';
-import { useCodaStore } from '../../store/useCodaStore';
+import type { FocusEvent, KeyboardEvent, MouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useCodaStore } from '../../store/useCodaStore';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+import { DropdownMenuContent, DropdownMenuItem } from '../ui/DropdownMenu';
+import { Input } from '../ui/Input';
+import { ShareDialog } from '../sharing/ShareDialog';
+import { PageIconPicker } from '../EditorPage/PageIconPicker';
+import type { Page } from '../type/typeScript';
 
 export const DocCard = ({ doc }: { doc: Page }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(doc.title);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { removeDocument, updatePageTitle } = useCodaStore();
+  const { removeDocument, updatePageIcon, updatePageTitle } = useCodaStore();
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (confirm('¿Estás seguro de que quieres eliminar este documento y todo su contenido?')) {
+
+    if (confirm('Seguro que quieres eliminar este documento y todo su contenido?')) {
       removeDocument(doc.docId);
       toast.success('Documento eliminado');
       setShowMenu(false);
     }
   };
 
-  const handleRename = (e: React.MouseEvent) => {
+  const handleRename = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setTitle(doc.title);
     setIsEditing(true);
     setShowMenu(false);
   };
 
-  const submitRename = (e: React.FocusEvent | React.KeyboardEvent) => {
+  const submitRename = (e: FocusEvent | KeyboardEvent) => {
     if ('key' in e && e.key !== 'Enter') return;
+
     setIsEditing(false);
     if (title.trim() && title !== doc.title) {
-      updatePageTitle(doc.id, title);
-      toast.success('Título actualizado');
+      updatePageTitle(doc.id, title.trim());
+      toast.success('Titulo actualizado');
     } else {
       setTitle(doc.title);
     }
   };
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: globalThis.MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowMenu(false);
       }
     };
-    if (showMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
+
+    if (showMenu) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMenu]);
 
   return (
-    <div className="relative">
-      <Link 
-        to={`/doc/${doc.docId}`} 
-        className="flex items-center gap-4 p-4 border border-gray-800 rounded-xl hover:border-blue-500/50 transition-all group bg-slate-900/90 hover:bg-slate-900"
-      >
-        <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-blue-400 shadow-lg shadow-blue-500/10">
-          <FileText size={20} />
+    <Card className="relative transition-colors hover:border-slate-300 hover:shadow-md">
+      <Link to={`/doc/${doc.docId}`} className="flex items-center gap-4 p-4">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-100"
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+        >
+          <PageIconPicker value={doc.icon} onSelect={(icon) => updatePageIcon(doc.id, icon)} />
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {isEditing ? (
-            <input
+            <Input
               autoFocus
-              className="bg-transparent text-slate-200 focus:outline-none border-b border-blue-500 w-full mb-1"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(event) => setTitle(event.target.value)}
               onBlur={submitRename}
               onKeyDown={submitRename}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
             />
           ) : (
-            <h3 className="font-medium text-slate-200 truncate">{doc.title}</h3>
+            <h3 className="truncate text-sm font-medium text-slate-950">{doc.title}</h3>
           )}
-          <p className="text-xs text-slate-500">Editado recientemente</p>
+          <p className="mt-1 text-xs text-slate-500">Editado recientemente</p>
         </div>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
             setShowMenu(!showMenu);
           }}
-          className="p-1 hover:bg-gray-800 rounded-lg transition-colors relative z-10"
+          aria-label="Opciones"
         >
-          <MoreVertical size={16} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
-        </button>
+          <MoreVertical size={16} />
+        </Button>
       </Link>
 
       {showMenu && (
-        <div 
-          ref={menuRef}
-          className="absolute right-0 top-full mt-2 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl z-30 py-2 backdrop-blur-xl bg-opacity-90 overflow-hidden"
-        >
-          <button
-            onClick={handleRename}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:bg-gray-800 transition-colors"
-          >
-            <Edit2 size={14} className="text-blue-400" />
-            Renombrar
-          </button>
-          <button
-            onClick={handleDelete}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-          >
-            <Trash size={14} />
-            Eliminar
-          </button>
+        <div ref={menuRef} className="absolute right-3 top-12 z-30">
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={handleRename}>
+              <Edit2 size={14} />
+              Renombrar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setIsShareOpen(true);
+                setShowMenu(false);
+              }}
+            >
+              <Share2 size={14} />
+              Compartir
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDelete} className="text-red-600 hover:bg-red-50">
+              <Trash size={14} />
+              Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </div>
       )}
-    </div>
+
+      <ShareDialog
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        targetType="workspace"
+        targetId={doc.docId}
+        docId={doc.docId}
+        title={doc.title}
+      />
+    </Card>
   );
 };
