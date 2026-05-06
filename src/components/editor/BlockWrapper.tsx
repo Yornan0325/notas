@@ -134,7 +134,7 @@ export const BlockWrapper = ({
     right: 'ml-auto',
   }[imageAlign];
 
-  const startImageResize = (event: ReactMouseEvent<HTMLButtonElement>) => {
+  const startImageResize = (event: ReactMouseEvent<HTMLElement>, edge: 'left' | 'right' = 'right') => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -147,8 +147,9 @@ export const BlockWrapper = ({
     const startWidth = imageWidth;
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      const nextWidth = Math.min(100, Math.max(25, startWidth + (delta / parentWidth) * 100));
+      const direction = edge === 'left' ? -1 : 1;
+      const delta = (moveEvent.clientX - startX) * direction;
+      const nextWidth = Math.min(100, Math.max(10, startWidth + (delta / parentWidth) * 100));
       onUpdateImageLayout({ imageWidth: Math.round(nextWidth) });
     };
 
@@ -257,6 +258,10 @@ export const BlockWrapper = ({
                   onFocus();
                 }}
                 onBlur={() => setIsImageSelected(false)}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  if (!readOnly) onUpdateImageLayout({ imageWidth: 100 });
+                }}
                 onKeyDown={(event) => {
                   if (!readOnly && (event.key === 'Backspace' || event.key === 'Delete')) {
                     event.preventDefault();
@@ -326,11 +331,21 @@ export const BlockWrapper = ({
                         <Columns3 size={14} />
                       </button>
                     </div>
-                    <span className="absolute -left-0.5 top-1/2 h-8 w-1.5 -translate-y-1/2 rounded-full bg-slate-950" />
-                    <span className="absolute -right-0.5 top-1/2 h-8 w-1.5 -translate-y-1/2 rounded-full bg-slate-950" />
                     <button
                       type="button"
-                      onMouseDown={startImageResize}
+                      onMouseDown={(event) => startImageResize(event, 'left')}
+                      className="absolute -left-1 top-1/2 h-10 w-2 -translate-y-1/2 cursor-ew-resize rounded-full bg-slate-950"
+                      title="Arrastrar para cambiar tamano"
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={(event) => startImageResize(event, 'right')}
+                      className="absolute -right-1 top-1/2 h-10 w-2 -translate-y-1/2 cursor-ew-resize rounded-full bg-slate-950"
+                      title="Arrastrar para cambiar tamano"
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={(event) => startImageResize(event, 'right')}
                       className="absolute bottom-2 right-2 flex h-7 w-7 cursor-ew-resize items-center justify-center rounded-md bg-white/95 text-slate-950 shadow-sm ring-1 ring-slate-200"
                       title="Arrastrar para cambiar tamano"
                     >

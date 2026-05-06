@@ -2,12 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'react';
 import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
-import { isFirebaseConfigured } from '../../api/firebase';
-import { uploadBlockImage } from '../../api/firebaseQueries';
 import { BlockWrapper } from './BlockWrapper';
 import { SlashMenu } from './SlashMenu';
 import type { Block } from '../type/typeScript';
-import { useSyncContext } from '../../context/SyncContext';
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -78,7 +75,6 @@ const getImageUrlFromText = (text: string) => {
 };
 
 export const Canvas = ({
-  docId,
   pageId,
   pageTitle,
   readOnly = false,
@@ -100,7 +96,6 @@ export const Canvas = ({
     removeBlock,
   } = useCodaStore();
 
-  const { user } = useSyncContext();
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
@@ -219,48 +214,47 @@ export const Canvas = ({
     setActiveBlockId(slashMenu.blockId);
   };
 
-  const handleUploadImage = async (blockId: string, file: File) => {
+  const storeImageFile = async (blockId: string, file: File) => {
     if (readOnly) return;
     try {
-      if (!isFirebaseConfigured) {
-        const localUrl = await readFileAsDataUrl(file);
-        updateBlockAttachment(blockId, localUrl, `local://${blockId}/${file.name}`, file.name);
-        toast.success('Imagen guardada localmente');
-        return;
-      }
-
-      const wsId = user?.email || 'default';
-      const uploadedImage = await uploadBlockImage({ wsId, docId, pageId, blockId, file });
-      updateBlockAttachment(
-        blockId,
-        uploadedImage.url,
-        uploadedImage.path,
-        uploadedImage.name
-      );
-      toast.success('Imagen subida');
+      const localUrl = await readFileAsDataUrl(file);
+      updateBlockAttachment(blockId, localUrl, `store://${pageId}/${blockId}/${file.name}`, file.name);
+      toast.success('Imagen guardada en el store');
     } catch (error) {
-      console.error('No se pudo subir la imagen:', error);
-
-      try {
-        const localUrl = await readFileAsDataUrl(file);
-        updateBlockAttachment(blockId, localUrl, `local://${blockId}/${file.name}`, file.name);
-        toast.success('Imagen guardada localmente');
-      } catch {
-        toast.error('No se pudo guardar la imagen');
-      }
+      console.error('No se pudo guardar la imagen:', error);
+      toast.error('No se pudo guardar la imagen');
     }
   };
 
-  const attachImageUrl = (blockId: string, url: string, name: string) => {
+  const attachImageUrl = async (blockId: string, url: string, name: string) => {
     if (readOnly) return;
-    const path = url.startsWith('data:image/') ? `local://${blockId}/${name}` : `external://${url}`;
-    updateBlockAttachment(blockId, url, path, name);
-    toast.success('Imagen pegada');
+
+    if (url.startsWith('data:image/')) {
+      updateBlockAttachment(blockId, url, `store://${pageId}/${blockId}/${name}`, name);
+      toast.success('Imagen guardada en el store');
+      return;
+    }
+
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+
+      if (!blob.type.startsWith('image/')) {
+        throw new Error('La URL no devolvio una imagen');
+      }
+
+      const extension = blob.type.split('/')[1] || 'png';
+      const file = new File([blob], `${name}.${extension}`, { type: blob.type });
+      await storeImageFile(blockId, file);
+    } catch {
+      updateBlockAttachment(blockId, url, `external://${url}`, name);
+      toast.success('Imagen enlazada en el store');
+    }
   };
 
   const handleAttachImage = (blockId: string, source: PastedImageSource) => {
     if (source.kind === 'file') {
-      handleUploadImage(blockId, source.file);
+      storeImageFile(blockId, source.file);
       return;
     }
 
@@ -407,7 +401,7 @@ export const Canvas = ({
       onImageDragEnd={() => setDragState(null)}
       onImageDragOver={(event) => handleImageDragOver(event, block)}
       onImageDrop={(event) => handleImageDrop(event, block)}
-      onUploadImage={(file) => handleUploadImage(block.id, file)}
+      onUploadImage={(file) => storeImageFile(block.id, file)}
       onUpdateImageLayout={(layout) => updateImageLayout(block.id, layout)}
       onUpdate={(val, e) => handleTextChange(block.id, val, e)}
       onChangeType={(type) => changeBlockType(block.id, type)}
