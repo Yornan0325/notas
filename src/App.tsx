@@ -4,7 +4,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { DashboardView } from './views/DashboardView';
 import { ProjectsView } from './views/ProjectsView';
 import { SharesView } from './views/SharesView';
+import { SettingsView } from './views/SettingsView';
 import { LoginView } from './views/LoginView';
+import { RegisterView } from './views/RegisterView';
 import { Toaster } from 'react-hot-toast';
 import EditorPage from './components/EditorPage/EditorPage';
 import { getFirebaseAuth, isFirebaseConfigured } from './api/firebase';
@@ -54,12 +56,14 @@ function App() {
       
       <Routes>
         <Route path="/login" element={<LoginView />} />
+        <Route path="/register" element={<RegisterView />} />
         
         {/* Rutas Protegidas */}
         <Route path="/" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><ProjectsView /></ProtectedRoute>} />
         <Route path="/documents" element={<Navigate to="/" replace />} />
         <Route path="/shares" element={<ProtectedRoute><SharesView /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><SettingsView /></ProtectedRoute>} />
         <Route path="/doc/:docId" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getFirebaseAuth } from '../api/firebase';
+import type { FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card } from '../components/ui/Card';
+import { Lock, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Mail, Lock } from 'lucide-react';
+import { getFirebaseAuth, isFirebaseConfigured } from '../api/firebase';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Input } from '../components/ui/Input';
 
 export const LoginView = () => {
   const [email, setEmail] = useState('');
@@ -14,30 +15,40 @@ export const LoginView = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!isFirebaseConfigured) {
+      toast.error('Firebase no esta configurado.');
+      return;
+    }
+
     if (!email || !password) {
-      toast.error('Por favor, ingresa tu correo y contraseña.');
+      toast.error('Por favor, ingresa tu correo y contrasena.');
       return;
     }
 
     try {
       setLoading(true);
       const auth = getFirebaseAuth();
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success('Sesión iniciada correctamente');
+      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      toast.success('Sesion iniciada correctamente');
       navigate('/');
     } catch (error: unknown) {
       console.error(error);
       const firebaseError = error as { code?: string; message?: string };
       const errorCode = firebaseError.code;
-      
-      if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
-        toast.error('Usuario no encontrado o contraseña incorrecta.');
+
+      if (
+        errorCode === 'auth/invalid-credential' ||
+        errorCode === 'auth/user-not-found' ||
+        errorCode === 'auth/wrong-password'
+      ) {
+        toast.error('Usuario no encontrado o contrasena incorrecta.');
       } else if (errorCode === 'auth/invalid-email') {
-        toast.error('El formato del correo es inválido.');
+        toast.error('El formato del correo es invalido.');
       } else {
-        toast.error('Error al iniciar sesión: ' + (firebaseError.message || 'Revisa tu conexión'));
+        toast.error('Error al iniciar sesion: ' + (firebaseError.message || 'Revisa tu conexion'));
       }
     } finally {
       setLoading(false);
@@ -60,14 +71,14 @@ export const LoginView = () => {
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="email">
-              Correo electrónico
+              Correo electronico
             </label>
             <Input
               id="email"
               type="email"
               placeholder="tu@correo.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               icon={<Mail size={16} />}
               required
             />
@@ -75,23 +86,30 @@ export const LoginView = () => {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700" htmlFor="password">
-              Contraseña
+              Contrasena
             </label>
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="........"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               icon={<Lock size={16} />}
               required
             />
           </div>
 
           <Button type="submit" className="mt-6 w-full" disabled={loading}>
-            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            {loading ? 'Iniciando sesion...' : 'Iniciar sesion'}
           </Button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          No tienes cuenta?{' '}
+          <Link to="/register" className="font-medium text-slate-950 hover:underline">
+            Crear cuenta
+          </Link>
+        </p>
       </Card>
     </div>
   );
