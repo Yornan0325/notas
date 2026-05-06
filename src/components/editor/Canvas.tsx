@@ -115,7 +115,16 @@ export const Canvas = ({
   } | null>(null);
 
   const pageBlocks = useMemo(
-    () => blocks.filter((block) => block.pageId === pageId),
+    () =>
+      blocks
+        .map((block, index) => ({ block, index }))
+        .filter((item) => item.block.pageId === pageId)
+        .sort((a, b) => {
+          const orderA = a.block.blockOrder ?? a.index;
+          const orderB = b.block.blockOrder ?? b.index;
+          return orderA === orderB ? a.index - b.index : orderA - orderB;
+        })
+        .map((item) => item.block),
     [blocks, pageId]
   );
 

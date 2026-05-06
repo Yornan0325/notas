@@ -66,6 +66,22 @@ interface CodaState {
 
 const now = () => new Date().toISOString();
 
+const normalizeBlockOrderForPage = (blocks: Block[], pageId: string) => {
+  let order = 0;
+
+  return blocks.map((block) => {
+    if (block.pageId !== pageId) return block;
+
+    const nextBlock = {
+      ...block,
+      blockOrder: order,
+      synced: false,
+    };
+    order += 1;
+    return nextBlock;
+  });
+};
+
 const collectPageTreeIds = (pages: Page[], rootId: string) => {
   const ids = new Set<string>([rootId]);
   let didAdd = true;
@@ -264,7 +280,7 @@ export const useCodaStore = create<CodaState>()(
           }
 
           return {
-            blocks: nextBlocks,
+            blocks: normalizeBlockOrderForPage(nextBlocks, pageId),
             pages: state.pages.map((page) =>
               page.id === pageId ? { ...page, updatedAt: now(), synced: false } : page
             ),
@@ -298,7 +314,7 @@ export const useCodaStore = create<CodaState>()(
           }
 
           return {
-            blocks: nextBlocks,
+            blocks: normalizeBlockOrderForPage(nextBlocks, pageId),
             pages: state.pages.map((item) =>
               item.id === pageId ? { ...item, updatedAt: now(), synced: false } : item
             ),
@@ -384,7 +400,7 @@ export const useCodaStore = create<CodaState>()(
           nextBlocks.splice(insertIndex, 0, movedBlock);
 
           return {
-            blocks: nextBlocks.map((block) =>
+            blocks: normalizeBlockOrderForPage(nextBlocks.map((block) =>
               placement === 'beside' && block.id === targetId && block.type === 'image'
                 ? {
                     ...block,
@@ -393,7 +409,7 @@ export const useCodaStore = create<CodaState>()(
                     synced: false,
                   }
                 : block
-            ),
+            ), movingBlock.pageId),
             pages: state.pages.map((page) =>
               page.id === movingBlock.pageId ? { ...page, updatedAt: now(), synced: false } : page
             ),
@@ -429,9 +445,19 @@ export const useCodaStore = create<CodaState>()(
         })),
 
       removeBlock: (id) =>
-        set((state) => ({
-          blocks: state.blocks.filter((block) => block.id !== id),
-        })),
+        set((state) => {
+          const blockToRemove = state.blocks.find((block) => block.id === id);
+          const nextBlocks = state.blocks.filter((block) => block.id !== id);
+
+          if (!blockToRemove) return { blocks: nextBlocks };
+
+          return {
+            blocks: normalizeBlockOrderForPage(nextBlocks, blockToRemove.pageId),
+            pages: state.pages.map((page) =>
+              page.id === blockToRemove.pageId ? { ...page, updatedAt: now(), synced: false } : page
+            ),
+          };
+        }),
 
       addShare: (share) => {
         const normalizedEmail = share.email.trim().toLowerCase();

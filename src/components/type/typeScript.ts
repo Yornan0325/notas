@@ -25,6 +25,7 @@ export interface Block {
     | 'view_board';
   content: string;
   synced: boolean;
+  blockOrder?: number;
   attachmentPath?: string;
   attachmentName?: string;
   imageWidth?: number;
