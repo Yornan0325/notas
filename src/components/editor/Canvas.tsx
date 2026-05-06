@@ -5,6 +5,7 @@ import { useCodaStore } from '../../store/useCodaStore';
 import { BlockWrapper } from './BlockWrapper';
 import { SlashMenu } from './SlashMenu';
 import type { Block } from '../type/typeScript';
+import { getDefaultViewContent, isViewBlockType, stringifyViewContent, type ViewBlockType } from './viewBlocks';
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -179,10 +180,11 @@ export const Canvas = ({
   const handleTextChange = (
     id: string,
     value: string,
-    e: ChangeEvent<HTMLTextAreaElement>
+    e?: ChangeEvent<HTMLTextAreaElement>
   ) => {
     if (readOnly) return;
     updateBlock(id, value);
+    if (!e) return;
 
     const cursorPosition = e.target.selectionStart;
     const lastChar = value[cursorPosition - 1];
@@ -206,7 +208,9 @@ export const Canvas = ({
     changeBlockType(slashMenu.blockId, type);
     const currentBlock = blocks.find((block) => block.id === slashMenu.blockId);
 
-    if (currentBlock) {
+    if (isViewBlockType(type)) {
+      updateBlock(slashMenu.blockId, stringifyViewContent(getDefaultViewContent(type)));
+    } else if (currentBlock) {
       updateBlock(slashMenu.blockId, currentBlock.content.replace('/', ''));
     }
 
@@ -315,6 +319,21 @@ export const Canvas = ({
     handleAttachImage(newBlockId, source);
   };
 
+  const addViewBlockBelow = (type: ViewBlockType, afterBlockId?: string) => {
+    if (readOnly) return;
+    const newBlockId = addBlock(type, pageId, afterBlockId);
+    updateBlock(newBlockId, stringifyViewContent(getDefaultViewContent(type)));
+    setActiveBlockId(newBlockId);
+  };
+
+  const changeBlockTypeWithDefaults = (blockId: string, type: Block['type']) => {
+    if (readOnly) return;
+    changeBlockType(blockId, type);
+    if (isViewBlockType(type)) {
+      updateBlock(blockId, stringifyViewContent(getDefaultViewContent(type)));
+    }
+  };
+
   const handleCanvasPaste = (event: ClipboardEvent<HTMLDivElement>) => {
     if (readOnly) return;
     const imageSource = getImageFromClipboard(event.clipboardData);
@@ -403,8 +422,9 @@ export const Canvas = ({
       onImageDrop={(event) => handleImageDrop(event, block)}
       onUploadImage={(file) => storeImageFile(block.id, file)}
       onUpdateImageLayout={(layout) => updateImageLayout(block.id, layout)}
+      onAddViewBelow={(type) => addViewBlockBelow(type, block.id)}
       onUpdate={(val, e) => handleTextChange(block.id, val, e)}
-      onChangeType={(type) => changeBlockType(block.id, type)}
+      onChangeType={(type) => changeBlockTypeWithDefaults(block.id, type)}
       onKeyDown={(e) => handleKeyDown(e, block.id)}
       onFocus={() => setActiveBlockId(block.id)}
       readOnly={readOnly}

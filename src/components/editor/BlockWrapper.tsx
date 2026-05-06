@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { BlockTypeSelector } from './BlockTypeSelector';
 import type { Block } from '../type/typeScript';
+import { ViewBlock } from './ViewBlock';
+import { isViewBlockType, type ViewBlockType } from './viewBlocks';
 
 interface BlockWrapperProps {
   block: Block;
@@ -36,7 +38,8 @@ interface BlockWrapperProps {
   onImageDrop: (event: DragEvent<HTMLDivElement>) => void;
   onUploadImage: (file: File) => Promise<void>;
   onUpdateImageLayout: (layout: Pick<Block, 'imageWidth' | 'imageAlign' | 'imageFlow'>) => void;
-  onUpdate: (content: string, e: ChangeEvent<HTMLTextAreaElement>) => void;
+  onAddViewBelow: (type: ViewBlockType) => void;
+  onUpdate: (content: string, e?: ChangeEvent<HTMLTextAreaElement>) => void;
   onChangeType: (type: Block['type']) => void;
   onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onFocus: () => void;
@@ -57,6 +60,14 @@ const typeStyles: Record<Block['type'], string> = {
   code: 'font-mono text-sm leading-6 text-slate-800',
   callout: 'text-base font-medium text-slate-800',
   image: 'text-base font-normal text-slate-700',
+  view_table: 'text-base font-normal text-slate-700',
+  view_cards: 'text-base font-normal text-slate-700',
+  view_detail: 'text-base font-normal text-slate-700',
+  view_calendar: 'text-base font-normal text-slate-700',
+  view_form: 'text-base font-normal text-slate-700',
+  view_timeline: 'text-base font-normal text-slate-700',
+  view_chart: 'text-base font-normal text-slate-700',
+  view_board: 'text-base font-normal text-slate-700',
 };
 
 const placeholders: Record<Block['type'], string> = {
@@ -73,6 +84,14 @@ const placeholders: Record<Block['type'], string> = {
   code: 'Codigo',
   callout: 'Aviso o contexto importante',
   image: 'Describe la imagen',
+  view_table: 'Table',
+  view_cards: 'Cards',
+  view_detail: 'Detail',
+  view_calendar: 'Calendar',
+  view_form: 'Form',
+  view_timeline: 'Timeline',
+  view_chart: 'Chart',
+  view_board: 'Board',
 };
 
 export const BlockWrapper = ({
@@ -88,6 +107,7 @@ export const BlockWrapper = ({
   onImageDrop,
   onUploadImage,
   onUpdateImageLayout,
+  onAddViewBelow,
   onUpdate,
   onChangeType,
   onKeyDown,
@@ -103,6 +123,7 @@ export const BlockWrapper = ({
   const imageWidth = block.imageWidth || 100;
   const imageAlign = block.imageAlign || 'center';
   const imageFlow = block.imageFlow || 'stack';
+  const isViewBlock = isViewBlockType(block.type);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -233,6 +254,18 @@ export const BlockWrapper = ({
       </div>
 
       <div className="w-full">
+        {isViewBlock && (
+          <ViewBlock
+            type={block.type as ViewBlockType}
+            content={block.content}
+            onUpdate={(content) => onUpdate(content)}
+            onAddView={onAddViewBelow}
+            onRemove={onRemove}
+            onFocus={onFocus}
+            readOnly={readOnly}
+          />
+        )}
+
         {block.type === 'image' && (
           <div className="mb-2 rounded-md bg-transparent">
             {block.content ? (
@@ -391,7 +424,7 @@ export const BlockWrapper = ({
           </div>
         )}
 
-        {block.type !== 'image' && (
+        {block.type !== 'image' && !isViewBlock && (
           <textarea
             ref={textareaRef}
             className={`w-full resize-none bg-transparent py-1 leading-relaxed transition-all placeholder:text-slate-300 focus:outline-none ${typeStyles[block.type]}`}

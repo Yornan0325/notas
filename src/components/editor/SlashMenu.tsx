@@ -1,6 +1,7 @@
 import {
   CheckSquare,
   Code,
+  GalleryVerticalEnd,
   Heading1,
   Heading2,
   Heading3,
@@ -9,6 +10,7 @@ import {
   ListOrdered,
   Megaphone,
   Quote,
+  Table2,
   Type,
 } from 'lucide-react';
 import type { Block } from '../type/typeScript';
@@ -32,6 +34,8 @@ export const SlashMenu = ({
     { id: 'code', label: 'Codigo', icon: Code },
     { id: 'callout', label: 'Aviso', icon: Megaphone },
     { id: 'image', label: 'Imagen', icon: Image },
+    { id: 'view_table', label: 'Tabla', icon: Table2 },
+    { id: 'view_cards', label: 'Cards', icon: GalleryVerticalEnd },
   ];
 
   return (

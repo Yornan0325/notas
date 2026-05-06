@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
-import { Lock, Mail, User } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getFirebaseAuth, getFirestoreDB, isFirebaseConfigured } from '../api/firebase';
 import { Button } from '../components/ui/Button';
@@ -15,6 +15,8 @@ export const RegisterView = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -73,6 +75,8 @@ export const RegisterView = () => {
         toast.error('El formato del correo es invalido.');
       } else if (firebaseError.code === 'auth/weak-password') {
         toast.error('La contrasena es muy debil.');
+      } else if (firebaseError.code === 'auth/configuration-not-found') {
+        toast.error('Firebase Auth no esta habilitado. Activa Authentication y Email/Password en Firebase Console.');
       } else {
         toast.error('No se pudo crear la cuenta: ' + (firebaseError.message || 'Revisa tu conexion'));
       }
@@ -131,11 +135,21 @@ export const RegisterView = () => {
             </label>
             <Input
               id="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="........"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               icon={<Lock size={16} />}
+              rightElement={
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              }
               required
             />
           </div>
@@ -146,11 +160,21 @@ export const RegisterView = () => {
             </label>
             <Input
               id="confirm-password"
-              type="password"
+              type={showConfirmPassword ? 'text' : 'password'}
               placeholder="........"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
               icon={<Lock size={16} />}
+              rightElement={
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  aria-label={showConfirmPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                >
+                  {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              }
               required
             />
           </div>

@@ -7,10 +7,12 @@ import {
   ChevronRight,
   ChevronRightSquare,
   Code,
+  GalleryVerticalEnd,
   Heading1,
   Heading2,
   Heading3,
   Image,
+  Table2,
   Link,
   List,
   ListOrdered,
@@ -79,6 +81,13 @@ export const BlockTypeSelector = ({
         { id: 'code', label: 'Codigo', icon: Code },
         { id: 'callout', label: 'Aviso', icon: Megaphone },
         { id: 'image', label: 'Imagen', icon: Image },
+      ],
+    },
+    {
+      label: 'Vistas',
+      options: [
+        { id: 'view_table', label: 'Tabla', icon: Table2 },
+        { id: 'view_cards', label: 'Cards', icon: GalleryVerticalEnd },
       ],
     },
   ];

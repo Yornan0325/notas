@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { getFirebaseAuth, isFirebaseConfigured } from '../api/firebase';
 import { Button } from '../components/ui/Button';
@@ -12,6 +12,7 @@ import { Input } from '../components/ui/Input';
 export const LoginView = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -47,6 +48,8 @@ export const LoginView = () => {
         toast.error('Usuario no encontrado o contrasena incorrecta.');
       } else if (errorCode === 'auth/invalid-email') {
         toast.error('El formato del correo es invalido.');
+      } else if (errorCode === 'auth/configuration-not-found') {
+        toast.error('Firebase Auth no esta habilitado. Activa Authentication y Email/Password en Firebase Console.');
       } else {
         toast.error('Error al iniciar sesion: ' + (firebaseError.message || 'Revisa tu conexion'));
       }
@@ -90,11 +93,21 @@ export const LoginView = () => {
             </label>
             <Input
               id="password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               placeholder="........"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               icon={<Lock size={16} />}
+              rightElement={
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              }
               required
             />
           </div>

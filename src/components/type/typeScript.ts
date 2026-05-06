@@ -14,7 +14,15 @@ export interface Block {
     | 'quote'
     | 'code'
     | 'callout'
-    | 'image';
+    | 'image'
+    | 'view_table'
+    | 'view_cards'
+    | 'view_detail'
+    | 'view_calendar'
+    | 'view_form'
+    | 'view_timeline'
+    | 'view_chart'
+    | 'view_board';
   content: string;
   synced: boolean;
   attachmentPath?: string;
