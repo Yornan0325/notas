@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Copy,
   Edit3,
-  FileText,
   MoreHorizontal,
   Plus,
   PlusSquare,
@@ -64,10 +63,11 @@ export const PageSidebar = ({
           <div>
             <Link
               to="/"
-              className="inline-flex items-center gap-2 rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950"
+              className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
               aria-label="Volver al workspace"
             >
-              <ArrowLeft size={17} /> Puesto de trabajo
+              <ArrowLeft size={16} className="shrink-0" />
+              <span className="leading-none">Puesto de trabajo</span>
             </Link>
 
             <h2 className="mt-2 max-w-48 truncate text-sm font-semibold text-slate-950">
@@ -95,7 +95,17 @@ export const PageSidebar = ({
               />
             ))}
           </div>
-        ) : null}
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed border-slate-200 px-4 py-8 text-center">
+            <p className="text-sm font-medium text-slate-950">Sin páginas</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Crea una página para empezar a organizar este puesto.
+            </p>
+            <Button className="mt-4" size="sm" icon={<Plus size={15} />} onClick={createPage}>
+              Nueva página
+            </Button>
+          </div>
+        )}
       </div>
     </aside>
   );

@@ -44,7 +44,7 @@ export const DashboardView = () => {
   const handleCreateDoc = (title: string) => {
     const newDocId = crypto.randomUUID();
     addPage(newDocId, null, title, { isDocumentRoot: true });
-    addPage(newDocId, null, title); // Primera página de contenido (sin padre)
+    addPage(newDocId, null, 'Inicio');
     navigate(`/doc/${newDocId}`);
   };
 

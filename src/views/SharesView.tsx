@@ -7,24 +7,19 @@ import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { getFirebaseAuth, isFirebaseConfigured } from '../api/firebase';
 import { getSharedDocuments } from '../api/firebaseQueries';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import type { Page } from '../components/type/typeScript';
 
 export const SharesView = () => {
-  const [user, setUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sharedDocs, setSharedDocs] = useState<Page[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isFirebaseConfigured);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    if (!isFirebaseConfigured) return;
     try {
       const auth = getFirebaseAuth();
       const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-        setUser(currentUser);
         if (currentUser?.email) {
           const docs = await getSharedDocuments(currentUser.email);
           setSharedDocs(docs);
@@ -36,7 +31,7 @@ export const SharesView = () => {
       return () => unsubscribe();
     } catch (error) {
       console.warn('Error inicializando auth', error);
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
     }
   }, []);
 
@@ -66,7 +61,7 @@ export const SharesView = () => {
         {loading ? (
           <div className="py-12 text-center text-sm text-slate-500">Cargando invitaciones...</div>
         ) : uniqueSharedDocs.length > 0 ? (
-          <ModuleGrid docs={uniqueSharedDocs} />
+          <ModuleGrid docs={uniqueSharedDocs} readOnly />
         ) : (
           <Card className="flex flex-col items-center justify-center border-dashed px-6 py-16 text-center">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-slate-100 text-slate-500">

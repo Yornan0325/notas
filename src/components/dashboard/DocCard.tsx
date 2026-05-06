@@ -12,7 +12,7 @@ import { ShareDialog } from '../sharing/ShareDialog';
 import { PageIconPicker } from '../EditorPage/PageIconPicker';
 import type { Page } from '../type/typeScript';
 
-export const DocCard = ({ doc }: { doc: Page }) => {
+export const DocCard = ({ doc, readOnly = false }: { doc: Page; readOnly?: boolean }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -84,7 +84,11 @@ export const DocCard = ({ doc }: { doc: Page }) => {
             event.stopPropagation();
           }}
         >
-          <PageIconPicker value={doc.icon} onSelect={(icon) => updatePageIcon(doc.id, icon)} />
+          {readOnly ? (
+            <span className="text-base">{doc.icon || '📄'}</span>
+          ) : (
+            <PageIconPicker value={doc.icon} onSelect={(icon) => updatePageIcon(doc.id, icon)} />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           {isEditing ? (
@@ -102,26 +106,30 @@ export const DocCard = ({ doc }: { doc: Page }) => {
           ) : (
             <div className="flex items-center gap-2">
               <h3 className="truncate text-sm font-medium text-slate-950">{doc.title}</h3>
-              {doc.isFavorite && <Star size={14} className="fill-yellow-400 text-yellow-400" />}
+              {doc.isFavorite && !readOnly && <Star size={14} className="fill-yellow-400 text-yellow-400" />}
             </div>
           )}
-          <p className="mt-1 text-xs text-slate-500">Editado recientemente</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {readOnly ? 'Compartido contigo' : 'Editado recientemente'}
+          </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setShowMenu(!showMenu);
-          }}
-          aria-label="Opciones"
-        >
-          <MoreVertical size={16} />
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+            aria-label="Opciones"
+          >
+            <MoreVertical size={16} />
+          </Button>
+        )}
       </Link>
 
-      {showMenu && (
+      {showMenu && !readOnly && (
         <div ref={menuRef} className="absolute right-3 top-12 z-30">
           <DropdownMenuContent>
             <DropdownMenuItem onClick={handleToggleFavorite}>

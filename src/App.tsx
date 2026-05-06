@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { DashboardView } from './views/DashboardView';
 import { SharesView } from './views/SharesView';
 import { LoginView } from './views/LoginView';
-import { useSync } from './hooks/useSync';
 import { Toaster } from 'react-hot-toast';
 import EditorPage from './components/EditorPage/EditorPage';
 import { getFirebaseAuth, isFirebaseConfigured } from './api/firebase';
@@ -13,13 +12,10 @@ import { SyncProvider } from './context/SyncContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isFirebaseConfigured);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      return;
-    }
+    if (!isFirebaseConfigured) return;
     try {
       const auth = getFirebaseAuth();
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -29,7 +25,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       return () => unsubscribe();
     } catch (e) {
       console.warn('Auth no inicializado', e);
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
     }
   }, []);
 

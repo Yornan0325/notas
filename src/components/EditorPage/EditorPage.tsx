@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Loader2, PanelLeftClose, PanelLeftOpen, Share2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Loader2, PanelLeftClose, PanelLeftOpen, Share2 } from 'lucide-react';
 import { useCodaStore } from '../../store/useCodaStore';
 import { getDocumentRoot } from '../../lib/documents';
 import { Button } from '../ui/Button';
@@ -12,12 +12,14 @@ import { useSyncContext } from '../../context/SyncContext';
 
 const EditorPage = () => {
   const { docId } = useParams();
+  const [searchParams] = useSearchParams();
   const { pages, addPage } = useCodaStore();
   const { loading } = useSyncContext();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const initializedDocIdRef = useRef<string | null>(null);
+  const requestedPageId = searchParams.get('page');
 
   const docPages = useMemo(
     () => pages.filter((page) => page.docId === docId),
@@ -36,33 +38,34 @@ const EditorPage = () => {
 
   const visibleActivePageId = useMemo(() => {
     const activePageBelongsToDoc = internalPages.some((page) => page.id === activePageId);
-    return activePageBelongsToDoc ? activePageId : internalPages[0]?.id || null;
-  }, [activePageId, internalPages]);
+    if (activePageBelongsToDoc) return activePageId;
+
+    const requestedPage = internalPages.find((page) => page.id === requestedPageId);
+    return requestedPage?.id || internalPages[0]?.id || null;
+  }, [activePageId, internalPages, requestedPageId]);
 
   const currentPage = pages.find((page) => page.id === visibleActivePageId);
   const displayedRootPage = rootPage || currentPage;
 
   useEffect(() => {
-    if (!docId || initialized) return;
+    if (!docId || initializedDocIdRef.current === docId) return;
     if (internalPages.length > 0) {
-      setInitialized(true);
+      initializedDocIdRef.current = docId;
       return;
     }
     if (loading) return;
 
-    setInitialized(true);
+    initializedDocIdRef.current = docId;
 
     if (docPages.length === 0) {
       // Documento completamente nuevo
       addPage(docId, null, 'Documento nuevo', { isDocumentRoot: true });
-      const firstPageId = addPage(docId, null, 'Documento nuevo');
-      setActivePageId(firstPageId);
+      addPage(docId, null, 'Documento nuevo');
     } else if (rootPage && internalPages.length === 0) {
       // Solo existe la raíz, crear primera página de contenido
-      const firstPageId = addPage(docId, null, 'Documento nuevo');
-      setActivePageId(firstPageId);
+      addPage(docId, null, 'Documento nuevo');
     }
-  }, [loading, docId, initialized, docPages.length, internalPages.length, rootPage, addPage]);
+  }, [loading, docId, docPages.length, internalPages.length, rootPage, addPage]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-950">
@@ -75,7 +78,18 @@ const EditorPage = () => {
 
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur">
-          <Separator className="h-6 w-px" />
+          {isSidebarCollapsed ? (
+            <Link
+              to="/"
+              className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
+              aria-label="Volver al workspace"
+            >
+              <ArrowLeft size={16} className="shrink-0" />
+              <span className="leading-none">Puesto de trabajo</span>
+            </Link>
+          ) : (
+            <Separator className="h-6 w-px" />
+          )}
 
           <Button
             variant="ghost"

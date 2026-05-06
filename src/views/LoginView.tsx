@@ -27,16 +27,17 @@ export const LoginView = () => {
       await signInWithEmailAndPassword(auth, email, password);
       toast.success('Sesión iniciada correctamente');
       navigate('/');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      const errorCode = error?.code;
+      const firebaseError = error as { code?: string; message?: string };
+      const errorCode = firebaseError.code;
       
       if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
         toast.error('Usuario no encontrado o contraseña incorrecta.');
       } else if (errorCode === 'auth/invalid-email') {
         toast.error('El formato del correo es inválido.');
       } else {
-        toast.error('Error al iniciar sesión: ' + (error?.message || 'Revisa tu conexión'));
+        toast.error('Error al iniciar sesión: ' + (firebaseError.message || 'Revisa tu conexión'));
       }
     } finally {
       setLoading(false);

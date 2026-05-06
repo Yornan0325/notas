@@ -18,6 +18,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSyncContext = () => {
   const context = useContext(SyncContext);
   if (context === undefined) {

@@ -76,8 +76,8 @@ export const useSync = () => {
         const remotePages: Page[] = remoteWorkspace.pages.map(p => ({ ...p, synced: true }));
         const remoteBlocks: Block[] = remoteWorkspace.blocks.map(b => ({ ...b, synced: true }));
 
-        let allPages: Page[] = [...remotePages];
-        let allBlocks: Block[] = [...remoteBlocks];
+        const allPages: Page[] = [...remotePages];
+        const allBlocks: Block[] = [...remoteBlocks];
 
         // Shared documents
         try {

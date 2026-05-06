@@ -23,7 +23,7 @@ const iconOptions: IconOption[] = [
   { icon: '📟', label: 'Modulo', keywords: 'modulo placa dispositivo' },
   { icon: '🍓', label: 'Raspberry', keywords: 'raspberry pi placa' },
   { icon: '🤖', label: 'Robotica', keywords: 'robot automatizacion' },
-  { icon: '📡', label: 'Sensor', keywords: 'sensor señal medicion' },
+  { icon: '📡', label: 'Sensor', keywords: 'sensor senal medicion' },
   { icon: '📊', label: 'Datos', keywords: 'datos graficas tabla' },
   { icon: '📦', label: 'Inventario', keywords: 'inventario caja elementos' },
   { icon: '🏗️', label: 'Proyecto', keywords: 'proyecto construccion obra' },
@@ -65,6 +65,7 @@ export const PageIconPicker = ({
       `${option.label} ${option.keywords}`.toLowerCase().includes(normalizedQuery)
     );
   }, [query]);
+  const displayedIcon = value && !/[ÃÂð�]/.test(value) ? value : '📄';
 
   return (
     <div
@@ -86,7 +87,7 @@ export const PageIconPicker = ({
         className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base transition-colors hover:bg-white hover:shadow-sm"
         title="Cambiar icono"
       >
-        {value || '📄'}
+        {displayedIcon}
       </button>
 
       {isOpen && (

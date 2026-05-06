@@ -3,7 +3,6 @@ import { Check, Copy, Link as LinkIcon, Mail, Trash2, Users } from 'lucide-react
 import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
 import type { SharePermission, ShareTargetType } from '../type/typeScript';
-import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
