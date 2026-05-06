@@ -75,6 +75,12 @@ const getImageUrlFromText = (text: string) => {
   return normalizeImageUrl(value);
 };
 
+const getBlockPlainText = (content: string) => {
+  const element = document.createElement('div');
+  element.innerHTML = content;
+  return element.textContent?.trim() || '';
+};
+
 export const Canvas = ({
   pageId,
   pageTitle,
@@ -153,7 +159,7 @@ export const Canvas = ({
     return newId;
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>, blockId: string) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLElement>, blockId: string) => {
     const currentBlock = pageBlocks.find((block) => block.id === blockId);
     const currentIndex = pageBlocks.findIndex((block) => block.id === blockId);
     if (readOnly) return;
@@ -164,7 +170,7 @@ export const Canvas = ({
       return;
     }
 
-    if (e.key === 'Backspace' && currentBlock && currentBlock.content === '') {
+    if (e.key === 'Backspace' && currentBlock && getBlockPlainText(currentBlock.content) === '') {
       if (currentIndex > 0) {
         e.preventDefault();
         const prevBlock = pageBlocks[currentIndex - 1];

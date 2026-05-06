@@ -9,15 +9,20 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  Bold,
   Check,
   ChevronRight,
   Columns3,
   GripVertical,
   Image,
+  Italic,
   Maximize2,
   Megaphone,
+  Palette,
   Plus,
+  Strikethrough,
   Trash2,
+  Underline,
   Upload,
 } from 'lucide-react';
 import { BlockTypeSelector } from './BlockTypeSelector';
@@ -41,7 +46,7 @@ interface BlockWrapperProps {
   onAddViewBelow: (type: ViewBlockType) => void;
   onUpdate: (content: string, e?: ChangeEvent<HTMLTextAreaElement>) => void;
   onChangeType: (type: Block['type']) => void;
-  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
   onFocus: () => void;
   readOnly?: boolean;
 }
@@ -117,7 +122,10 @@ export const BlockWrapper = ({
   const [showSelector, setShowSelector] = useState(false);
   const [isTodoChecked, setIsTodoChecked] = useState(false);
   const [isImageSelected, setIsImageSelected] = useState(false);
+  const [toolbarPosition, setToolbarPosition] = useState<{ left: number; top: number } | null>(null);
+  const [colorPanel, setColorPanel] = useState<'text' | 'highlight' | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const richTextRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageFrameRef = useRef<HTMLDivElement>(null);
   const imageWidth = block.imageWidth || 100;
@@ -138,6 +146,30 @@ export const BlockWrapper = ({
       const length = textareaRef.current.value.length;
       textareaRef.current.setSelectionRange(length, length);
     }
+  }, [isFocused]);
+
+  useEffect(() => {
+    const editor = richTextRef.current;
+    if (!editor || document.activeElement === editor) return;
+    if (editor.innerHTML !== block.content) {
+      editor.innerHTML = block.content;
+    }
+  }, [block.content]);
+
+  useEffect(() => {
+    if (!isFocused || !richTextRef.current) return;
+
+    const editor = richTextRef.current;
+    if (document.activeElement === editor) return;
+    editor.focus();
+
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
   }, [isFocused]);
 
   const blockShell =
@@ -181,6 +213,50 @@ export const BlockWrapper = ({
 
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
+  };
+
+  const updateToolbarPosition = () => {
+    const selection = window.getSelection();
+    const editor = richTextRef.current;
+
+    if (!selection || !editor || selection.isCollapsed || !editor.contains(selection.anchorNode)) {
+      setToolbarPosition(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (!rect.width && !rect.height) {
+      setToolbarPosition(null);
+      return;
+    }
+
+    setToolbarPosition({
+      left: rect.left + rect.width / 2,
+      top: Math.max(12, rect.top - 52),
+    });
+  };
+
+  const applyRichTextCommand = (command: string, value?: string) => {
+    const editor = richTextRef.current;
+    if (!editor) return;
+
+    editor.focus();
+    document.execCommand(command, false, value);
+    onUpdate(editor.innerHTML);
+    updateToolbarPosition();
+  };
+
+  const textColorOptions = ['#111827', '#dc2626', '#ea580c', '#16a34a', '#2563eb', '#7c3aed', '#be185d', '#6b7280'];
+  const highlightColorOptions = ['#fecaca', '#fed7aa', '#fef3c7', '#bbf7d0', '#bfdbfe', '#e9d5ff', '#fbcfe8', '#e5e7eb'];
+
+  const clearFormattingColor = () => {
+    if (colorPanel === 'text') {
+      applyRichTextCommand('removeFormat');
+      return;
+    }
+
+    applyRichTextCommand('backColor', 'transparent');
   };
 
   return (
@@ -254,6 +330,117 @@ export const BlockWrapper = ({
       </div>
 
       <div className="w-full">
+        {toolbarPosition && !readOnly && (
+          <div
+            className="fixed z-[120] flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-slate-600 shadow-xl"
+            style={{ left: toolbarPosition.left, top: toolbarPosition.top }}
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            <button
+              type="button"
+              onClick={() => onChangeType('text')}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
+              title="Texto"
+            >
+              <span className="text-lg font-semibold">T</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => applyRichTextCommand('bold')}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
+              title="Negrita"
+            >
+              <Bold size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => applyRichTextCommand('italic')}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
+              title="Italica"
+            >
+              <Italic size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => applyRichTextCommand('underline')}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
+              title="Subrayar"
+            >
+              <Underline size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => applyRichTextCommand('strikeThrough')}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
+              title="Tachar"
+            >
+              <Strikethrough size={18} />
+            </button>
+            <div className="mx-1 h-6 w-px bg-slate-200" />
+            <div className="relative flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setColorPanel((value) => (value === 'text' ? null : 'text'))}
+                className="flex h-8 items-center gap-1 rounded-md px-2 hover:bg-slate-100"
+                title="Color de texto"
+              >
+                <span className="text-lg font-semibold text-red-600">A</span>
+                <span className="text-xs text-slate-400">⌄</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setColorPanel((value) => (value === 'highlight' ? null : 'highlight'))}
+                className="flex h-8 items-center gap-1 rounded-md px-2 hover:bg-slate-100"
+                title="Color de fondo"
+              >
+                <span className="rounded bg-amber-100 px-1 text-lg font-semibold text-slate-700">A</span>
+                <span className="text-xs text-slate-400">⌄</span>
+              </button>
+
+              {colorPanel && (
+                <div className="absolute left-0 top-11 w-[232px] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <Palette size={15} />
+                    {colorPanel === 'text' ? 'Text color' : 'Color and highlight'}
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(colorPanel === 'text' ? textColorOptions : highlightColorOptions).map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => {
+                          applyRichTextCommand(colorPanel === 'text' ? 'foreColor' : 'backColor', color);
+                          setColorPanel(null);
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-lg font-semibold shadow-sm hover:border-slate-300"
+                        style={
+                          colorPanel === 'text'
+                            ? { color }
+                            : { backgroundColor: color, color: '#4b5563' }
+                        }
+                        title={colorPanel === 'text' ? 'Aplicar color de texto' : 'Aplicar fondo'}
+                      >
+                        A
+                      </button>
+                    ))}
+                  </div>
+                  <div className="my-3 border-t border-dashed border-slate-200" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearFormattingColor();
+                      setColorPanel(null);
+                    }}
+                    className="text-sm font-medium text-blue-700 hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {isViewBlock && (
           <ViewBlock
             type={block.type as ViewBlockType}
@@ -424,7 +611,7 @@ export const BlockWrapper = ({
           </div>
         )}
 
-        {block.type !== 'image' && !isViewBlock && (
+        {block.type !== 'image' && !isViewBlock && block.type === 'code' && (
           <textarea
             ref={textareaRef}
             className={`w-full resize-none bg-transparent py-1 leading-relaxed transition-all placeholder:text-slate-300 focus:outline-none ${typeStyles[block.type]}`}
@@ -437,6 +624,24 @@ export const BlockWrapper = ({
             readOnly={readOnly}
             rows={1}
             placeholder={placeholders[block.type]}
+          />
+        )}
+
+        {block.type !== 'image' && !isViewBlock && block.type !== 'code' && (
+          <div
+            ref={richTextRef}
+            className={`min-h-[34px] w-full bg-transparent py-1 leading-relaxed transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
+            contentEditable={!readOnly}
+            suppressContentEditableWarning
+            data-placeholder={placeholders[block.type]}
+            onInput={(event) => {
+              if (!readOnly) onUpdate(event.currentTarget.innerHTML);
+            }}
+            onKeyDown={readOnly ? undefined : onKeyDown}
+            onFocus={onFocus}
+            onMouseUp={updateToolbarPosition}
+            onKeyUp={updateToolbarPosition}
+            onBlur={() => setToolbarPosition(null)}
           />
         )}
       </div>
