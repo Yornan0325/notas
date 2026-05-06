@@ -40,6 +40,7 @@ export interface Page {
   ownerWorkspaceId?: string;
   sharePermission?: SharePermission;
   sharedRootId?: string;
+  projectName?: string;
 }
 
 export type ShareTargetType = 'workspace' | 'page';

@@ -1,4 +1,4 @@
-import { FileText, Folder, Home, Settings, UserPlus } from 'lucide-react';
+import { Home, Settings, UserPlus } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { Separator } from '../ui/Separator';
@@ -40,20 +40,6 @@ export const Sidebar = ({ mode }: { mode: string }) => {
           );
         })}
       </nav>
-
-      <div className="mt-6">
-        <p className="mb-2 px-2 text-xs font-medium text-slate-500">Biblioteca</p>
-        <div className="space-y-1">
-          <button className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950">
-            <Folder size={16} />
-            Proyectos
-          </button>
-          <button className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950">
-            <FileText size={16} />
-            Documentos
-          </button>
-        </div>
-      </div>
 
       <div className="mt-auto">
         <Separator className="mb-3" />

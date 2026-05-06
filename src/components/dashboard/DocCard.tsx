@@ -24,7 +24,7 @@ export const DocCard = ({ doc, readOnly = false }: { doc: Page; readOnly?: boole
     e.preventDefault();
     e.stopPropagation();
     togglePageFavorite(doc.id);
-    toast.success(doc.isFavorite ? 'Quitado de favoritos' : 'Añadido a favoritos');
+    toast.success(doc.isFavorite ? 'Quitado de favoritos' : 'Anadido a favoritos');
     setShowMenu(false);
   };
 
@@ -110,7 +110,7 @@ export const DocCard = ({ doc, readOnly = false }: { doc: Page; readOnly?: boole
             </div>
           )}
           <p className="mt-1 text-xs text-slate-500">
-            {readOnly ? 'Compartido contigo' : 'Editado recientemente'}
+            {readOnly ? 'Compartido contigo' : doc.projectName || 'Sin carpeta'}
           </p>
         </div>
         {!readOnly && (
@@ -141,7 +141,7 @@ export const DocCard = ({ doc, readOnly = false }: { doc: Page; readOnly?: boole
               ) : (
                 <>
                   <Star size={14} />
-                  Añadir favorito
+                  Anadir favorito
                 </>
               )}
             </DropdownMenuItem>

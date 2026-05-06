@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'react';
 import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
@@ -16,6 +16,66 @@ const readFileAsDataUrl = (file: File) =>
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+
+type PastedImageSource =
+  | { kind: 'file'; file: File }
+  | { kind: 'url'; url: string; name: string };
+
+const normalizeImageUrl = (value: string | null) => {
+  const url = value?.trim();
+  if (!url) return null;
+
+  if (/^data:image\//i.test(url)) return url;
+  if (!/^https?:\/\//i.test(url)) return null;
+
+  try {
+    const parsedUrl = new URL(url);
+    const googleImageUrl = parsedUrl.searchParams.get('imgurl');
+    if (googleImageUrl && /^https?:\/\//i.test(googleImageUrl)) {
+      return decodeURIComponent(googleImageUrl);
+    }
+  } catch {
+    return url;
+  }
+
+  return url;
+};
+
+const getBestSrcsetUrl = (srcset: string | null) => {
+  if (!srcset) return null;
+
+  const candidates = srcset
+    .split(',')
+    .map((candidate) => {
+      const [url, descriptor = ''] = candidate.trim().split(/\s+/);
+      const score = Number.parseFloat(descriptor) || 0;
+      return { url, score };
+    })
+    .filter((candidate) => candidate.url)
+    .sort((a, b) => b.score - a.score);
+
+  return normalizeImageUrl(candidates[0]?.url || null);
+};
+
+const getImageUrlFromHtml = (html: string) => {
+  if (!html.trim()) return null;
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const img = doc.querySelector('img');
+  if (!img) return null;
+
+  return (
+    normalizeImageUrl(img.getAttribute('src')) ||
+    normalizeImageUrl(img.getAttribute('data-src')) ||
+    normalizeImageUrl(img.getAttribute('data-iurl')) ||
+    getBestSrcsetUrl(img.getAttribute('srcset'))
+  );
+};
+
+const getImageUrlFromText = (text: string) => {
+  const value = text.trim();
+  return normalizeImageUrl(value);
+};
 
 export const Canvas = ({
   docId,
@@ -41,6 +101,7 @@ export const Canvas = ({
   } = useCodaStore();
 
   const { user } = useSyncContext();
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -190,10 +251,26 @@ export const Canvas = ({
     }
   };
 
-  const handlePasteImage = (block: Block, file: File) => {
+  const attachImageUrl = (blockId: string, url: string, name: string) => {
+    if (readOnly) return;
+    const path = url.startsWith('data:image/') ? `local://${blockId}/${name}` : `external://${url}`;
+    updateBlockAttachment(blockId, url, path, name);
+    toast.success('Imagen pegada');
+  };
+
+  const handleAttachImage = (blockId: string, source: PastedImageSource) => {
+    if (source.kind === 'file') {
+      handleUploadImage(blockId, source.file);
+      return;
+    }
+
+    attachImageUrl(blockId, source.url, source.name);
+  };
+
+  const handlePasteImage = (block: Block, source: PastedImageSource) => {
     if (readOnly) return;
     const targetBlockId =
-      block.content.trim().length === 0 && block.type !== 'image'
+      block.content.trim().length === 0 && (block.type !== 'image' || !block.content)
         ? block.id
         : addBlock('image', pageId, block.id);
 
@@ -202,38 +279,55 @@ export const Canvas = ({
     }
 
     setActiveBlockId(targetBlockId);
-    handleUploadImage(targetBlockId, file);
+    handleAttachImage(targetBlockId, source);
   };
 
-  const getImageFromClipboard = (event: ClipboardEvent) => {
-    const fileFromItems = Array.from(event.clipboardData.items)
+  const getImageFromClipboard = (clipboardData: DataTransfer): PastedImageSource | null => {
+    const fileFromItems = Array.from(clipboardData.items)
       .find((item) => item.type.startsWith('image/'))
       ?.getAsFile();
 
-    if (fileFromItems) return fileFromItems;
+    if (fileFromItems) return { kind: 'file', file: fileFromItems };
 
-    return Array.from(event.clipboardData.files).find((file) =>
+    const fileFromList = Array.from(clipboardData.files).find((file) =>
       file.type.startsWith('image/')
     );
+    if (fileFromList) return { kind: 'file', file: fileFromList };
+
+    const htmlImageUrl = getImageUrlFromHtml(clipboardData.getData('text/html'));
+    if (htmlImageUrl) return { kind: 'url', url: htmlImageUrl, name: 'imagen-pegada' };
+
+    const uriListImageUrl = getImageUrlFromText(clipboardData.getData('text/uri-list'));
+    if (uriListImageUrl) return { kind: 'url', url: uriListImageUrl, name: 'imagen-pegada' };
+
+    const textImageUrl = getImageUrlFromText(clipboardData.getData('text/plain'));
+    if (textImageUrl) return { kind: 'url', url: textImageUrl, name: 'imagen-pegada' };
+
+    return null;
   };
 
-  const handleCanvasPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+  const pasteImageIntoPage = (source: PastedImageSource) => {
     if (readOnly) return;
-    const imageFile = getImageFromClipboard(event);
-    if (!imageFile) return;
-
-    event.preventDefault();
 
     const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
     if (activeBlock) {
-      handlePasteImage(activeBlock, imageFile);
+      handlePasteImage(activeBlock, source);
       return;
     }
 
     const lastBlock = pageBlocks[pageBlocks.length - 1];
     const newBlockId = addBlock('image', pageId, lastBlock?.id);
     setActiveBlockId(newBlockId);
-    handleUploadImage(newBlockId, imageFile);
+    handleAttachImage(newBlockId, source);
+  };
+
+  const handleCanvasPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    if (readOnly) return;
+    const imageSource = getImageFromClipboard(event.clipboardData);
+    if (!imageSource) return;
+
+    event.preventDefault();
+    pasteImageIntoPage(imageSource);
   };
 
   const getDropPlacement = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
@@ -274,6 +368,32 @@ export const Canvas = ({
     }
   }, [addBlock, pageId, pageBlocks.length, readOnly]);
 
+  useEffect(() => {
+    if (readOnly) return;
+
+    const handleWindowPaste = (event: globalThis.ClipboardEvent) => {
+      if (!event.clipboardData) return;
+
+      const activeElement = document.activeElement;
+      const pasteBelongsToCanvas =
+        activeElement === document.body ||
+        activeElement === null;
+
+      if (!pasteBelongsToCanvas) return;
+
+      const imageSource = getImageFromClipboard(event.clipboardData);
+      if (!imageSource) return;
+
+      event.preventDefault();
+      pasteImageIntoPage(imageSource);
+    };
+
+    window.addEventListener('paste', handleWindowPaste);
+    return () => window.removeEventListener('paste', handleWindowPaste);
+    // pasteImageIntoPage is intentionally scoped to the current page state above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBlockId, pageBlocks, readOnly]);
+
   const renderBlock = (block: Block, index: number) => (
     <BlockWrapper
       key={block.id}
@@ -299,8 +419,10 @@ export const Canvas = ({
 
   return (
     <div
+      ref={canvasRef}
       className="relative mx-auto min-h-screen max-w-4xl flex-1 px-6 py-12 md:px-12"
       onPaste={readOnly ? undefined : handleCanvasPaste}
+      tabIndex={-1}
     >
       <input
         className="mb-2 w-full border-none bg-transparent text-5xl font-semibold tracking-tight text-slate-950 outline-none placeholder:text-slate-200 md:text-6xl"

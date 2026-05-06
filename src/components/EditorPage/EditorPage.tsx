@@ -14,7 +14,7 @@ const EditorPage = () => {
   const { docId } = useParams();
   const [searchParams] = useSearchParams();
   const { pages, addPage } = useCodaStore();
-  const { loading } = useSyncContext();
+  const { loading, user } = useSyncContext();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -46,7 +46,10 @@ const EditorPage = () => {
 
   const currentPage = pages.find((page) => page.id === visibleActivePageId);
   const displayedRootPage = rootPage || currentPage;
-  const isSharedReadOnly = Boolean(currentPage?.ownerWorkspaceId && currentPage.sharePermission !== 'edit');
+  const isSharedFromAnotherWorkspace = Boolean(
+    currentPage?.ownerWorkspaceId && currentPage.ownerWorkspaceId !== user?.email
+  );
+  const isSharedReadOnly = isSharedFromAnotherWorkspace && currentPage?.sharePermission !== 'edit';
 
   useEffect(() => {
     if (!docId || initializedDocIdRef.current === docId) return;

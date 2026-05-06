@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardView } from './views/DashboardView';
+import { ProjectsView } from './views/ProjectsView';
 import { SharesView } from './views/SharesView';
 import { LoginView } from './views/LoginView';
 import { Toaster } from 'react-hot-toast';
@@ -56,6 +57,8 @@ function App() {
         
         {/* Rutas Protegidas */}
         <Route path="/" element={<ProtectedRoute><DashboardView /></ProtectedRoute>} />
+        <Route path="/projects" element={<ProtectedRoute><ProjectsView /></ProtectedRoute>} />
+        <Route path="/documents" element={<Navigate to="/" replace />} />
         <Route path="/shares" element={<ProtectedRoute><SharesView /></ProtectedRoute>} />
         <Route path="/doc/:docId" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
 

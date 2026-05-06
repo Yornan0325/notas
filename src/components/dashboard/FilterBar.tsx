@@ -6,10 +6,12 @@ export const FilterBar = ({
   onSearch,
   activeFilter = 'recientes',
   onFilterChange,
+  showFilters = true,
 }: {
   onSearch: (val: string) => void;
   activeFilter?: string;
   onFilterChange?: (filter: string) => void;
+  showFilters?: boolean;
 }) => {
   const filters = [
     { id: 'recientes', label: 'Recientes', icon: Clock },
@@ -26,22 +28,24 @@ export const FilterBar = ({
           onChange={(e) => onSearch(e.target.value)}
         />
       </div>
-      <div className="flex gap-2 overflow-x-auto">
-        {filters.map((filter) => {
-          const isActive = activeFilter === filter.id;
-          return (
-            <Button
-              key={filter.id}
-              variant={isActive ? 'secondary' : 'outline'}
-              size="sm"
-              icon={<filter.icon size={14} />}
-              onClick={() => onFilterChange?.(filter.id)}
-            >
-              {filter.label}
-            </Button>
-          );
-        })}
-      </div>
+      {showFilters && (
+        <div className="flex gap-2 overflow-x-auto">
+          {filters.map((filter) => {
+            const isActive = activeFilter === filter.id;
+            return (
+              <Button
+                key={filter.id}
+                variant={isActive ? 'secondary' : 'outline'}
+                size="sm"
+                icon={<filter.icon size={14} />}
+                onClick={() => onFilterChange?.(filter.id)}
+              >
+                {filter.label}
+              </Button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

@@ -12,6 +12,7 @@ interface CodaState {
   blocks: Block[];
   pages: Page[];
   shares: ShareInvite[];
+  projectFolders: string[];
   addBlock: (type: Block['type'], pageId: string, afterBlockId?: string) => string;
   updateBlock: (id: string, content: string) => void;
   updateBlockAttachment: (id: string, content: string, path: string, name: string) => void;
@@ -40,6 +41,7 @@ interface CodaState {
   duplicatePage: (id: string) => string | null;
   updatePageTitle: (id: string, title: string) => void;
   updatePageIcon: (id: string, icon: string) => void;
+  updatePageProject: (id: string, projectName?: string) => void;
   togglePageFavorite: (id: string) => void;
   removePage: (id: string) => void;
   removeDocument: (docId: string) => void;
@@ -55,6 +57,9 @@ interface CodaState {
   removeShare: (id: string) => void;
   markSharesAsSynced: (ids: string[]) => void;
   setShares: (shares: ShareInvite[]) => void;
+  addProjectFolder: (name: string) => void;
+  renameProjectFolder: (currentName: string, nextName: string) => void;
+  removeProjectFolder: (name: string) => void;
   clearWorkspace: () => void;
 }
 
@@ -83,6 +88,7 @@ export const useCodaStore = create<CodaState>()(
       blocks: [],
       pages: [],
       shares: [],
+      projectFolders: [],
 
       addPage: (docId, parentId = null, title = 'Nueva pagina', options) => {
         const id = crypto.randomUUID();
@@ -170,6 +176,20 @@ export const useCodaStore = create<CodaState>()(
         set((state) => ({
           pages: state.pages.map((page) =>
             page.id === id ? { ...page, icon, updatedAt: now(), synced: false } : page
+          ),
+        })),
+
+      updatePageProject: (id, projectName) =>
+        set((state) => ({
+          pages: state.pages.map((page) =>
+            page.id === id
+              ? {
+                  ...page,
+                  projectName: projectName?.trim() || undefined,
+                  updatedAt: now(),
+                  synced: false,
+                }
+              : page
           ),
         })),
 
@@ -439,7 +459,55 @@ export const useCodaStore = create<CodaState>()(
       setBlocks: (blocks) => set({ blocks }),
       setPages: (pages) => set({ pages }),
       setShares: (shares) => set({ shares: shares.map(s => ({ ...s, synced: true })) }),
-      clearWorkspace: () => set({ blocks: [], pages: [], shares: [] }),
+      addProjectFolder: (name) =>
+        set((state) => {
+          const folderName = name.trim();
+          if (!folderName) return state;
+
+          const exists = state.projectFolders.some(
+            (folder) => folder.toLowerCase() === folderName.toLowerCase()
+          );
+          if (exists) return state;
+
+          return { projectFolders: [...state.projectFolders, folderName].sort((a, b) => a.localeCompare(b)) };
+        }),
+      renameProjectFolder: (currentName, nextName) =>
+        set((state) => {
+          const currentFolderName = currentName.trim();
+          const nextFolderName = nextName.trim();
+          if (!currentFolderName || !nextFolderName || currentFolderName === nextFolderName) return state;
+
+          const projectFolders = state.projectFolders
+            .map((folder) => (folder === currentFolderName ? nextFolderName : folder))
+            .filter((folder, index, folders) =>
+              folders.findIndex((item) => item.toLowerCase() === folder.toLowerCase()) === index
+            )
+            .sort((a, b) => a.localeCompare(b));
+
+          return {
+            projectFolders,
+            pages: state.pages.map((page) =>
+              page.projectName === currentFolderName
+                ? { ...page, projectName: nextFolderName, updatedAt: now(), synced: false }
+                : page
+            ),
+          };
+        }),
+      removeProjectFolder: (name) =>
+        set((state) => {
+          const folderName = name.trim();
+          if (!folderName) return state;
+
+          return {
+            projectFolders: state.projectFolders.filter((folder) => folder !== folderName),
+            pages: state.pages.map((page) =>
+              page.projectName === folderName
+                ? { ...page, projectName: undefined, updatedAt: now(), synced: false }
+                : page
+            ),
+          };
+        }),
+      clearWorkspace: () => set({ blocks: [], pages: [], shares: [], projectFolders: [] }),
     }),
     { name: 'coda-storage' }
   )

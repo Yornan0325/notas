@@ -7,19 +7,21 @@ export const CreateDocModal = ({
   isOpen,
   onClose,
   onCreate,
+  title = 'Nuevo documento',
 }: {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (title: string) => void;
+  title?: string;
 }) => {
-  const [title, setTitle] = useState('');
+  const [documentTitle, setDocumentTitle] = useState('');
 
   const createDoc = () => {
-    const trimmedTitle = title.trim();
+    const trimmedTitle = documentTitle.trim();
     if (!trimmedTitle) return;
 
     onCreate(trimmedTitle);
-    setTitle('');
+    setDocumentTitle('');
     onClose();
   };
 
@@ -27,7 +29,7 @@ export const CreateDocModal = ({
     <Dialog
       open={isOpen}
       onOpenChange={(open) => !open && onClose()}
-      title="Nuevo documento"
+      title={title}
       description="Crea un documento con paginas, bloques e imagenes."
       footer={
         <>
@@ -42,8 +44,8 @@ export const CreateDocModal = ({
         autoFocus
         type="text"
         placeholder="Titulo del documento"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
+        value={documentTitle}
+        onChange={(event) => setDocumentTitle(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') createDoc();
         }}
