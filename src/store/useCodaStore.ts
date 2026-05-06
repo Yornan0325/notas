@@ -14,6 +14,7 @@ interface CodaState {
   shares: ShareInvite[];
   projectFolders: string[];
   addBlock: (type: Block['type'], pageId: string, afterBlockId?: string) => string;
+  addBlockAtStart: (type: Block['type'], pageId: string) => string;
   updateBlock: (id: string, content: string) => void;
   updateBlockAttachment: (id: string, content: string, path: string, name: string) => void;
   updateImageLayout: (
@@ -266,6 +267,40 @@ export const useCodaStore = create<CodaState>()(
             blocks: nextBlocks,
             pages: state.pages.map((page) =>
               page.id === pageId ? { ...page, updatedAt: now(), synced: false } : page
+            ),
+          };
+        });
+
+        return id;
+      },
+
+      addBlockAtStart: (type, pageId) => {
+        const id = crypto.randomUUID();
+
+        set((state) => {
+          const page = state.pages.find((item) => item.id === pageId);
+          const newBlock: Block = {
+            id,
+            type,
+            content: '',
+            synced: false,
+            pageId,
+            ownerWorkspaceId: page?.ownerWorkspaceId,
+          };
+
+          const firstPageBlockIndex = state.blocks.findIndex((block) => block.pageId === pageId);
+          const nextBlocks = [...state.blocks];
+
+          if (firstPageBlockIndex === -1) {
+            nextBlocks.push(newBlock);
+          } else {
+            nextBlocks.splice(firstPageBlockIndex, 0, newBlock);
+          }
+
+          return {
+            blocks: nextBlocks,
+            pages: state.pages.map((item) =>
+              item.id === pageId ? { ...item, updatedAt: now(), synced: false } : item
             ),
           };
         });

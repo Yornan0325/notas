@@ -88,6 +88,7 @@ export const Canvas = ({
   const {
     blocks,
     addBlock,
+    addBlockAtStart,
     updateBlock,
     updateBlockAttachment,
     updateImageLayout,
@@ -141,6 +142,13 @@ export const Canvas = ({
   const focusNewBlock = (type: Block['type'] = 'text', afterBlockId?: string) => {
     if (readOnly) return '';
     const newId = addBlock(type, pageId, afterBlockId);
+    setActiveBlockId(newId);
+    return newId;
+  };
+
+  const focusNewBlockAtStart = (type: Block['type'] = 'text') => {
+    if (readOnly) return '';
+    const newId = addBlockAtStart(type, pageId);
     setActiveBlockId(newId);
     return newId;
   };
@@ -448,7 +456,7 @@ export const Canvas = ({
           if (readOnly) return;
           if (e.key === 'Enter') {
             e.preventDefault();
-            focusNewBlock('text');
+            focusNewBlockAtStart('text');
           }
         }}
         readOnly={readOnly}
