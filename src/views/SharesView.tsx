@@ -53,7 +53,7 @@ export const SharesView = () => {
               Compartido conmigo
             </Badge>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-              Invitaciones
+              Compartidos
             </h1>
             <p className="mt-2 text-sm text-slate-500">
               Documentos que otros usuarios han compartido contigo.

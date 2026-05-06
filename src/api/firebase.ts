@@ -1,25 +1,13 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
   getFirestore,
-  serverTimestamp,
-  setDoc,
-  writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import {
-  getDownloadURL,
   getStorage,
-  ref,
-  uploadBytes,
   type FirebaseStorage,
 } from 'firebase/storage';
 import { getAuth, type Auth } from 'firebase/auth';
-import type { Block, Page } from '../components/type/typeScript';
-import type { ShareInvite } from '../components/type/typeScript';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

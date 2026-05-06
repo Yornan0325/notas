@@ -195,8 +195,9 @@ export const useSync = () => {
         console.log('[Sync] Saved successfully.');
         toast.success('Guardado', { id: 'sync-success', duration: 1500, position: 'bottom-right' });
       } catch (error) {
-        console.error('[Sync] Failed to sync:', error);
-        toast.error('Error al guardar');
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error('[Sync] Failed to sync. Full error:', error);
+        toast.error(`Error al guardar: ${msg.slice(0, 80)}`, { duration: 6000 });
       }
     };
 

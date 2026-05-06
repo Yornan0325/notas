@@ -43,23 +43,24 @@ export const syncWorkspaceToFirebase = async (wsId: string, pages: Page[], block
   const { db } = getFirebaseServices();
   const batch = writeBatch(db);
 
+  // Firestore rejects undefined values — strip them before writing
+  const clean = <T extends object>(obj: T): T =>
+    Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+
   batch.set(
     getWorkspaceRef(db, wsId),
-    {
-      id: wsId,
-      updatedAt: serverTimestamp(),
-    },
+    { id: wsId, updatedAt: serverTimestamp() },
     { merge: true }
   );
 
   pages.forEach((page) => {
     const wsRef = page.ownerWorkspaceId ? getWorkspaceRef(db, page.ownerWorkspaceId) : getWorkspaceRef(db, wsId);
-    batch.set(doc(collection(wsRef, 'pages'), page.id), page, { merge: true });
+    batch.set(doc(collection(wsRef, 'pages'), page.id), clean(page), { merge: true });
   });
 
   blocks.forEach((block) => {
     const wsRef = block.ownerWorkspaceId ? getWorkspaceRef(db, block.ownerWorkspaceId) : getWorkspaceRef(db, wsId);
-    batch.set(doc(collection(wsRef, 'blocks'), block.id), block, { merge: true });
+    batch.set(doc(collection(wsRef, 'blocks'), block.id), clean(block), { merge: true });
   });
 
   await batch.commit();
@@ -68,9 +69,11 @@ export const syncWorkspaceToFirebase = async (wsId: string, pages: Page[], block
 export const syncSharesToFirebase = async (wsId: string, shares: ShareInvite[]) => {
   const { db } = getFirebaseServices();
   const batch = writeBatch(db);
+  const clean = <T extends object>(obj: T): T =>
+    Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
 
   shares.forEach((share) => {
-    const shareData = { ...share, ownerWorkspaceId: wsId };
+    const shareData = clean({ ...share, ownerWorkspaceId: wsId });
     batch.set(doc(sharesCollection(db), share.id), shareData, { merge: true });
   });
 
@@ -211,6 +214,8 @@ export const uploadBlockImage = async ({
 
 export const saveBlockToFirebase = async (wsId: string, block: Block) => {
   const { db } = getFirebaseServices();
+  const clean = <T extends object>(obj: T): T =>
+    Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
   const wsRef = block.ownerWorkspaceId ? getWorkspaceRef(db, block.ownerWorkspaceId) : getWorkspaceRef(db, wsId);
-  await setDoc(doc(collection(wsRef, 'blocks'), block.id), block, { merge: true });
+  await setDoc(doc(collection(wsRef, 'blocks'), block.id), clean(block), { merge: true });
 };

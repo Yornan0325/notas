@@ -95,13 +95,7 @@ export const PageSidebar = ({
               />
             ))}
           </div>
-        ) : (
-          <div className="px-3 py-8 text-center">
-            <FileText size={24} className="mx-auto text-slate-300" />
-            <p className="mt-2 text-sm font-medium text-slate-600">Sin paginas</p>
-            <p className="mt-1 text-xs text-slate-400">Crea una pagina para empezar.</p>
-          </div>
-        )}
+        ) : null}
       </div>
     </aside>
   );

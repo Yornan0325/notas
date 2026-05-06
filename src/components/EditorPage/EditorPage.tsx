@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { FileText, PanelLeftClose, PanelLeftOpen, Plus, Share2 } from 'lucide-react';
+import { Loader2, PanelLeftClose, PanelLeftOpen, Share2 } from 'lucide-react';
 import { useCodaStore } from '../../store/useCodaStore';
 import { getDocumentRoot } from '../../lib/documents';
 import { Button } from '../ui/Button';
@@ -17,6 +17,7 @@ const EditorPage = () => {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   const docPages = useMemo(
     () => pages.filter((page) => page.docId === docId),
@@ -41,22 +42,27 @@ const EditorPage = () => {
   const currentPage = pages.find((page) => page.id === visibleActivePageId);
   const displayedRootPage = rootPage || currentPage;
 
-  const createPage = () => {
-    setActivePageId(addPage(docId || ''));
-  };
-
   useEffect(() => {
-    if (loading || !docId || internalPages.length > 0) return;
+    if (!docId || initialized) return;
+    if (internalPages.length > 0) {
+      setInitialized(true);
+      return;
+    }
+    if (loading) return;
+
+    setInitialized(true);
 
     if (docPages.length === 0) {
-      // Si el documento no existe, creamos la raíz y la primera página
-      const rootId = addPage(docId, null, 'Documento nuevo', { isDocumentRoot: true });
-      setActivePageId(addPage(docId, rootId, 'Nueva pagina'));
-    } else if (docPages.length === 1 && rootPage) {
-      // Si solo existe la raíz, creamos la primera página de contenido
-      setActivePageId(addPage(docId, rootPage.id, 'Nueva pagina'));
+      // Documento completamente nuevo
+      addPage(docId, null, 'Documento nuevo', { isDocumentRoot: true });
+      const firstPageId = addPage(docId, null, 'Documento nuevo');
+      setActivePageId(firstPageId);
+    } else if (rootPage && internalPages.length === 0) {
+      // Solo existe la raíz, crear primera página de contenido
+      const firstPageId = addPage(docId, null, 'Documento nuevo');
+      setActivePageId(firstPageId);
     }
-  }, [loading, addPage, docId, docPages.length, internalPages.length, rootPage]);
+  }, [loading, docId, initialized, docPages.length, internalPages.length, rootPage, addPage]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-950">
@@ -69,8 +75,6 @@ const EditorPage = () => {
 
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur">
-         
-
           <Separator className="h-6 w-px" />
 
           <Button
@@ -104,15 +108,8 @@ const EditorPage = () => {
               />
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-slate-100 text-slate-400">
-                <FileText size={24} />
-              </div>
-              <p className="font-medium text-slate-950">Selecciona o crea una pagina</p>
-              <p className="mt-1 text-sm text-slate-500">Empieza con una pagina dentro del documento.</p>
-              <Button className="mt-5" icon={<Plus size={16} />} onClick={createPage}>
-                Crear primera pagina
-              </Button>
+            <div className="flex h-full items-center justify-center">
+              <Loader2 size={28} className="animate-spin text-slate-400" />
             </div>
           )}
         </main>

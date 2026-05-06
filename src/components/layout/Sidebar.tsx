@@ -10,7 +10,7 @@ export const Sidebar = ({ mode }: { mode: string }) => {
   const navItems = [
     { icon: Home, label: 'Inicio', path: '/' },
     // { icon: Bell, label: 'Notificaciones', path: '/notifications' },
-    { icon: UserPlus, label: 'Invitaciones', path: '/shares' },
+    { icon: UserPlus, label: 'Compartidos', path: '/shares' },
   ];
 
   return (

@@ -19,9 +19,11 @@ export const DashboardView = () => {
   const navigate = useNavigate();
 
   const filteredDocs = useMemo(() => {
-    let docs = getDocumentRoots(pages).filter((page) =>
-      page.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let docs = getDocumentRoots(pages)
+      .filter((page) => !page.ownerWorkspaceId) // Solo documentos propios, no compartidos
+      .filter((page) =>
+        page.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
     if (activeFilter === 'favoritos') {
       docs = docs.filter((page) => page.isFavorite);
@@ -42,6 +44,7 @@ export const DashboardView = () => {
   const handleCreateDoc = (title: string) => {
     const newDocId = crypto.randomUUID();
     addPage(newDocId, null, title, { isDocumentRoot: true });
+    addPage(newDocId, null, title); // Primera página de contenido (sin padre)
     navigate(`/doc/${newDocId}`);
   };
 
