@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, PanelLeftClose, PanelLeftOpen, Plus, Share2 } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { FileText, PanelLeftClose, PanelLeftOpen, Plus, Share2 } from 'lucide-react';
 import { useCodaStore } from '../../store/useCodaStore';
 import { getDocumentRoot } from '../../lib/documents';
 import { Button } from '../ui/Button';
@@ -8,10 +8,12 @@ import { Separator } from '../ui/Separator';
 import { ShareDialog } from '../sharing/ShareDialog';
 import { Canvas } from '../editor/Canvas';
 import { PageSidebar } from './PageSidebar';
+import { useSyncContext } from '../../context/SyncContext';
 
 const EditorPage = () => {
   const { docId } = useParams();
   const { pages, addPage } = useCodaStore();
+  const { loading } = useSyncContext();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -44,10 +46,17 @@ const EditorPage = () => {
   };
 
   useEffect(() => {
-    if (!docId || internalPages.length > 0 || docPages.length === 0) return;
+    if (loading || !docId || internalPages.length > 0) return;
 
-    setActivePageId(addPage(docId, null, 'Nueva pagina'));
-  }, [addPage, docId, docPages.length, internalPages.length]);
+    if (docPages.length === 0) {
+      // Si el documento no existe, creamos la raíz y la primera página
+      const rootId = addPage(docId, null, 'Documento nuevo', { isDocumentRoot: true });
+      setActivePageId(addPage(docId, rootId, 'Nueva pagina'));
+    } else if (docPages.length === 1 && rootPage) {
+      // Si solo existe la raíz, creamos la primera página de contenido
+      setActivePageId(addPage(docId, rootPage.id, 'Nueva pagina'));
+    }
+  }, [loading, addPage, docId, docPages.length, internalPages.length, rootPage]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-950">

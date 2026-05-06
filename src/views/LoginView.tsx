@@ -29,7 +29,15 @@ export const LoginView = () => {
       navigate('/');
     } catch (error: any) {
       console.error(error);
-      toast.error('Credenciales inválidas o error al iniciar sesión');
+      const errorCode = error?.code;
+      
+      if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
+        toast.error('Usuario no encontrado o contraseña incorrecta.');
+      } else if (errorCode === 'auth/invalid-email') {
+        toast.error('El formato del correo es inválido.');
+      } else {
+        toast.error('Error al iniciar sesión: ' + (error?.message || 'Revisa tu conexión'));
+      }
     } finally {
       setLoading(false);
     }

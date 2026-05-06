@@ -22,6 +22,7 @@ export interface Block {
   imageWidth?: number;
   imageAlign?: 'left' | 'center' | 'right';
   imageFlow?: 'stack' | 'columns';
+  ownerWorkspaceId?: string;
 }
 
 export interface Page {
@@ -34,7 +35,8 @@ export interface Page {
   isFavorite?: boolean;
   createdAt?: string;
   updatedAt?: string;
-  synced?: boolean;
+  synced: boolean;
+  ownerWorkspaceId?: string;
 }
 
 export type ShareTargetType = 'workspace' | 'page';
@@ -49,6 +51,7 @@ export interface ShareInvite {
   email: string;
   permission: SharePermission;
   token: string;
+  ownerWorkspaceId?: string;
   createdAt: string;
-  synced?: boolean;
+  synced: boolean;
 }

@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'react';
 import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
-import { isFirebaseConfigured, uploadBlockImage } from '../../api/firebase';
+import { isFirebaseConfigured } from '../../api/firebase';
+import { uploadBlockImage } from '../../api/firebaseQueries';
 import { BlockWrapper } from './BlockWrapper';
 import { SlashMenu } from './SlashMenu';
 import type { Block } from '../type/typeScript';
+import { useSyncContext } from '../../context/SyncContext';
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -35,6 +37,8 @@ export const Canvas = ({
     updatePageTitle,
     removeBlock,
   } = useCodaStore();
+
+  const { user } = useSyncContext();
 
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -157,7 +161,8 @@ export const Canvas = ({
         return;
       }
 
-      const uploadedImage = await uploadBlockImage({ docId, pageId, blockId, file });
+      const wsId = user?.email || 'default';
+      const uploadedImage = await uploadBlockImage({ wsId, docId, pageId, blockId, file });
       updateBlockAttachment(
         blockId,
         uploadedImage.url,

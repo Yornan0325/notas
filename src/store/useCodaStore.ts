@@ -51,8 +51,10 @@ interface CodaState {
     email: string;
     permission: SharePermission;
   }) => ShareInvite;
+  updateSharePermission: (id: string, permission: SharePermission) => void;
   removeShare: (id: string) => void;
   markSharesAsSynced: (ids: string[]) => void;
+  clearWorkspace: () => void;
 }
 
 const now = () => new Date().toISOString();
@@ -85,22 +87,28 @@ export const useCodaStore = create<CodaState>()(
         const id = crypto.randomUUID();
         const timestamp = now();
 
-        set((state) => ({
-          pages: [
-            ...state.pages,
-            {
-              id,
-              title,
-              parentId: parentId || null,
-              docId,
-              icon: options?.isDocumentRoot ? '📄' : '📝',
-              isDocumentRoot: Boolean(options?.isDocumentRoot),
-              createdAt: timestamp,
-              updatedAt: timestamp,
-              synced: false,
-            },
-          ],
-        }));
+        set((state) => {
+          const existingPage = state.pages.find(p => p.docId === docId);
+          const ownerWorkspaceId = existingPage?.ownerWorkspaceId;
+          
+          return {
+            pages: [
+              ...state.pages,
+              {
+                id,
+                title,
+                parentId: parentId || null,
+                docId,
+                icon: options?.isDocumentRoot ? '📄' : '📝',
+                isDocumentRoot: Boolean(options?.isDocumentRoot),
+                createdAt: timestamp,
+                updatedAt: timestamp,
+                synced: false,
+                ownerWorkspaceId,
+              },
+            ],
+          };
+        });
 
         return id;
       },
@@ -197,9 +205,17 @@ export const useCodaStore = create<CodaState>()(
 
       addBlock: (type, pageId, afterBlockId) => {
         const id = crypto.randomUUID();
-        const newBlock: Block = { id, type, content: '', synced: false, pageId };
 
         set((state) => {
+          const page = state.pages.find(p => p.id === pageId);
+          const newBlock: Block = { 
+            id, 
+            type, 
+            content: '', 
+            synced: false, 
+            pageId,
+            ownerWorkspaceId: page?.ownerWorkspaceId
+          };
           const pageBlocks = state.blocks.filter((block) => block.pageId === pageId);
           const insertAtPageIndex = afterBlockId
             ? pageBlocks.findIndex((block) => block.id === afterBlockId) + 1
@@ -379,6 +395,13 @@ export const useCodaStore = create<CodaState>()(
           shares: state.shares.filter((share) => share.id !== id),
         })),
 
+      updateSharePermission: (id, permission) =>
+        set((state) => ({
+          shares: state.shares.map((share) =>
+            share.id === id ? { ...share, permission, synced: false } : share
+          ),
+        })),
+
       markSharesAsSynced: (ids) =>
         set((state) => ({
           shares: state.shares.map((share) =>
@@ -387,7 +410,8 @@ export const useCodaStore = create<CodaState>()(
         })),
 
       setBlocks: (blocks) => set({ blocks }),
-      setPages: (pages) => set({ pages: pages.map((page) => ({ ...page, synced: true })) }),
+      setPages: (pages) => set({ pages }),
+      clearWorkspace: () => set({ blocks: [], pages: [], shares: [] }),
     }),
     { name: 'coda-storage' }
   )

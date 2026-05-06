@@ -26,7 +26,7 @@ export const ShareDialog = ({
   docId,
   title,
 }: ShareDialogProps) => {
-  const { shares, addShare, removeShare } = useCodaStore();
+  const { shares, addShare, removeShare, updateSharePermission } = useCodaStore();
   const [email, setEmail] = useState('');
   const [permission, setPermission] = useState<SharePermission>('view');
   const [copied, setCopied] = useState(false);
@@ -127,7 +127,14 @@ export const ShareDialog = ({
                     <p className="truncate text-sm font-medium text-slate-950">{share.email}</p>
                     <p className="text-xs text-slate-500">Invitado localmente</p>
                   </div>
-                  <Badge variant="secondary">{share.permission === 'edit' ? 'Editar' : 'Ver'}</Badge>
+                  <select
+                    value={share.permission}
+                    onChange={(event) => updateSharePermission(share.id, event.target.value as SharePermission)}
+                    className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-950"
+                  >
+                    <option value="view">Ver</option>
+                    <option value="edit">Editar</option>
+                  </select>
                   <Button
                     variant="ghost"
                     size="icon"

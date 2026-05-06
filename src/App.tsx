@@ -9,6 +9,7 @@ import { Toaster } from 'react-hot-toast';
 import EditorPage from './components/EditorPage/EditorPage';
 import { getFirebaseAuth, isFirebaseConfigured } from './api/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { SyncProvider } from './context/SyncContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -49,11 +50,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  // Activamos el hook de sincronización global
-  useSync();
-
   return (
-    <Router>
+    <SyncProvider>
+      <Router>
       <Toaster position="bottom-right" reverseOrder={false} />
       
       <Routes>
@@ -66,7 +65,8 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+      </Router>
+    </SyncProvider>
   );
 }
 
