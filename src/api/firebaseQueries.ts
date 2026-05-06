@@ -45,7 +45,13 @@ export const syncWorkspaceToFirebase = async (wsId: string, pages: Page[], block
 
   // Firestore rejects undefined values — strip them before writing
   const clean = <T extends object>(obj: T): T =>
-    Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+    Object.fromEntries(
+      Object.entries(obj).filter(
+        ([key, value]) =>
+          value !== undefined &&
+          !['ownerWorkspaceId', 'sharePermission', 'sharedRootId'].includes(key)
+      )
+    ) as T;
 
   batch.set(
     getWorkspaceRef(db, wsId),
@@ -70,7 +76,13 @@ export const syncSharesToFirebase = async (wsId: string, shares: ShareInvite[]) 
   const { db } = getFirebaseServices();
   const batch = writeBatch(db);
   const clean = <T extends object>(obj: T): T =>
-    Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+    Object.fromEntries(
+      Object.entries(obj).filter(
+        ([key, value]) =>
+          value !== undefined &&
+          !['sharePermission', 'sharedRootId'].includes(key)
+      )
+    ) as T;
 
   shares.forEach((share) => {
     const shareData = clean({ ...share, ownerWorkspaceId: wsId });
@@ -83,6 +95,28 @@ export const syncSharesToFirebase = async (wsId: string, shares: ShareInvite[]) 
 export const deleteFirebaseShare = async (shareId: string) => {
   const { db } = getFirebaseServices();
   await deleteDoc(doc(sharesCollection(db), shareId));
+};
+
+const collectSharedPageTree = (pages: Page[], rootId: string) => {
+  const allowedIds = new Set<string>([rootId]);
+  let didAdd = true;
+
+  while (didAdd) {
+    didAdd = false;
+    pages.forEach((page) => {
+      if (page.parentId && allowedIds.has(page.parentId) && !allowedIds.has(page.id)) {
+        allowedIds.add(page.id);
+        didAdd = true;
+      }
+    });
+  }
+
+  return pages.filter((page) => allowedIds.has(page.id));
+};
+
+const getPagesForShare = (docPages: Page[], share: ShareInvite) => {
+  if (share.targetType === 'workspace') return docPages;
+  return collectSharedPageTree(docPages, share.targetId);
 };
 
 export const getSharedDocuments = async (email: string): Promise<Page[]> => {
@@ -104,10 +138,16 @@ export const getSharedDocuments = async (email: string): Promise<Page[]> => {
       if (!pagesSnapshot.empty) {
         const docPages = pagesSnapshot.docs.map((d) => ({
           ...(d.data() as Page),
+          ownerWorkspaceId: share.ownerWorkspaceId,
+          sharePermission: share.permission,
+          sharedRootId: share.targetType === 'page' ? share.targetId : undefined,
           synced: true,
         }));
-        const explicitRoot = docPages.find((p) => p.isDocumentRoot);
-        const rootPage = explicitRoot || docPages.filter((p) => !p.parentId).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))[0];
+        const visiblePages = getPagesForShare(docPages, share);
+        const rootPage = share.targetType === 'page'
+          ? visiblePages.find((p) => p.id === share.targetId)
+          : visiblePages.find((p) => p.isDocumentRoot) ||
+            visiblePages.filter((p) => !p.parentId).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))[0];
         
         if (rootPage) {
           pages.push({ ...rootPage, docId: share.docId });
@@ -142,11 +182,14 @@ export const loadSharedWorkspaceData = async (email: string) => {
       const docPages = pSnap.docs.map((d) => ({
         ...(d.data() as Page),
         ownerWorkspaceId: share.ownerWorkspaceId,
+        sharePermission: share.permission,
+        sharedRootId: share.targetType === 'page' ? share.targetId : undefined,
         synced: true
       }));
-      allPages.push(...docPages);
+      const visiblePages = getPagesForShare(docPages, share);
+      allPages.push(...visiblePages);
       
-      const pageIds = docPages.map((p) => p.id);
+      const pageIds = visiblePages.map((p) => p.id);
       for (let i = 0; i < pageIds.length; i += 10) {
         const chunk = pageIds.slice(i, i + 10);
         if (chunk.length === 0) continue;
@@ -155,6 +198,7 @@ export const loadSharedWorkspaceData = async (email: string) => {
         const docBlocks = bSnap.docs.map((d) => ({
           ...(d.data() as Block),
           ownerWorkspaceId: share.ownerWorkspaceId,
+          sharePermission: share.permission,
           synced: true
         }));
         allBlocks.push(...docBlocks);
@@ -215,7 +259,13 @@ export const uploadBlockImage = async ({
 export const saveBlockToFirebase = async (wsId: string, block: Block) => {
   const { db } = getFirebaseServices();
   const clean = <T extends object>(obj: T): T =>
-    Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+    Object.fromEntries(
+      Object.entries(obj).filter(
+        ([key, value]) =>
+          value !== undefined &&
+          !['ownerWorkspaceId', 'sharePermission', 'sharedRootId'].includes(key)
+      )
+    ) as T;
   const wsRef = block.ownerWorkspaceId ? getWorkspaceRef(db, block.ownerWorkspaceId) : getWorkspaceRef(db, wsId);
   await setDoc(doc(collection(wsRef, 'blocks'), block.id), clean(block), { merge: true });
 };

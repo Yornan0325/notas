@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../lib/utils';
-import { getDocumentRoot, isInternalRootPage } from '../../lib/documents';
+import { getDocumentRoot } from '../../lib/documents';
 import { useCodaStore } from '../../store/useCodaStore';
 import { Button } from '../ui/Button';
 import { DropdownMenuContent, DropdownMenuItem } from '../ui/DropdownMenu';
@@ -35,22 +35,27 @@ export const PageSidebar = ({
   activePageId,
   onSelectPage,
   isCollapsed = false,
+  readOnly = false,
 }: {
   docId: string;
   activePageId: string | null;
   onSelectPage: (id: string) => void;
   isCollapsed?: boolean;
+  readOnly?: boolean;
 }) => {
   const { pages, addPage } = useCodaStore();
   const documentRoot = getDocumentRoot(pages, docId);
-  const rootPages = pages.filter(
+  const docPages = pages.filter((page) => page.docId === docId);
+  const docPageIds = new Set(docPages.map((page) => page.id));
+  const rootPages = docPages.filter(
     (page) =>
-      page.docId === docId &&
-      isInternalRootPage(page) &&
-      page.id !== documentRoot?.id
+      !page.isDocumentRoot &&
+      page.id !== documentRoot?.id &&
+      (!page.parentId || !docPageIds.has(page.parentId))
   );
 
   const createPage = () => {
+    if (readOnly) return;
     onSelectPage(addPage(docId));
   };
 
@@ -74,9 +79,11 @@ export const PageSidebar = ({
               {documentRoot?.title || 'Documento'}
             </h2>
           </div>
-          <Button type="button" variant="outline" size="icon" onClick={createPage} aria-label="Nueva pagina">
-            <Plus size={16} />
-          </Button>
+          {!readOnly && (
+            <Button type="button" variant="outline" size="icon" onClick={createPage} aria-label="Nueva pagina">
+              <Plus size={16} />
+            </Button>
+          )}
         </div>
 
         <Separator />
@@ -92,6 +99,7 @@ export const PageSidebar = ({
                 page={page}
                 activePageId={activePageId}
                 onSelectPage={onSelectPage}
+                readOnly={readOnly}
               />
             ))}
           </div>
@@ -101,9 +109,11 @@ export const PageSidebar = ({
             <p className="mt-1 text-xs text-slate-500">
               Crea una página para empezar a organizar este puesto.
             </p>
-            <Button className="mt-4" size="sm" icon={<Plus size={15} />} onClick={createPage}>
-              Nueva página
-            </Button>
+            {!readOnly && (
+              <Button className="mt-4" size="sm" icon={<Plus size={15} />} onClick={createPage}>
+                Nueva página
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -115,10 +125,12 @@ const PageItem = ({
   page,
   activePageId,
   onSelectPage,
+  readOnly = false,
 }: {
   page: Page;
   activePageId: string | null;
   onSelectPage: (id: string) => void;
+  readOnly?: boolean;
 }) => {
   const {
     pages,
@@ -232,7 +244,13 @@ const PageItem = ({
           )}
         </button>
 
-        <PageIconPicker value={page.icon} onSelect={(icon) => updatePageIcon(page.id, icon)} />
+        {readOnly ? (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center text-base">
+            {page.icon || '📄'}
+          </span>
+        ) : (
+          <PageIconPicker value={page.icon} onSelect={(icon) => updatePageIcon(page.id, icon)} />
+        )}
 
         <div className="min-w-0 flex-1">
           {isEditing ? (
@@ -253,21 +271,23 @@ const PageItem = ({
           )}
         </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMenu(!showMenu);
-          }}
-          aria-label="Opciones de pagina"
-        >
-          <MoreHorizontal size={15} />
-        </Button>
+        {!readOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+            aria-label="Opciones de pagina"
+          >
+            <MoreHorizontal size={15} />
+          </Button>
+        )}
 
-        {showMenu && (
+        {showMenu && !readOnly && (
           <div ref={menuRef} className="absolute right-1 top-9 z-50" onClick={(e) => e.stopPropagation()}>
             <DropdownMenuContent className="w-56">
               <MenuItem icon={<PlusSquare size={15} />} label="Agregar subpagina" onClick={createChild} />
@@ -300,6 +320,7 @@ const PageItem = ({
               page={child}
               activePageId={activePageId}
               onSelectPage={onSelectPage}
+              readOnly={readOnly}
             />
           ))}
         </div>

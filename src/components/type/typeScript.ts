@@ -23,6 +23,7 @@ export interface Block {
   imageAlign?: 'left' | 'center' | 'right';
   imageFlow?: 'stack' | 'columns';
   ownerWorkspaceId?: string;
+  sharePermission?: SharePermission;
 }
 
 export interface Page {
@@ -37,6 +38,8 @@ export interface Page {
   updatedAt?: string;
   synced: boolean;
   ownerWorkspaceId?: string;
+  sharePermission?: SharePermission;
+  sharedRootId?: string;
 }
 
 export type ShareTargetType = 'workspace' | 'page';

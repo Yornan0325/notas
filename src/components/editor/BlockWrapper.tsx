@@ -40,6 +40,7 @@ interface BlockWrapperProps {
   onChangeType: (type: Block['type']) => void;
   onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onFocus: () => void;
+  readOnly?: boolean;
 }
 
 const typeStyles: Record<Block['type'], string> = {
@@ -91,6 +92,7 @@ export const BlockWrapper = ({
   onChangeType,
   onKeyDown,
   onFocus,
+  readOnly = false,
 }: BlockWrapperProps) => {
   const [showSelector, setShowSelector] = useState(false);
   const [isTodoChecked, setIsTodoChecked] = useState(false);
@@ -163,8 +165,8 @@ export const BlockWrapper = ({
     <div
       className={`group relative -ml-14 flex items-start gap-2 rounded-md py-1 pl-14 transition-colors hover:bg-slate-50 focus-within:bg-slate-50 ${blockShell}`}
       onMouseLeave={() => setShowSelector(false)}
-      onDragOver={onImageDragOver}
-      onDrop={onImageDrop}
+      onDragOver={readOnly ? undefined : onImageDragOver}
+      onDrop={readOnly ? undefined : onImageDrop}
     >
       {dragPlacement === 'before' && (
         <div className="absolute left-8 right-0 top-0 h-0.5 rounded bg-slate-950" />
@@ -175,7 +177,8 @@ export const BlockWrapper = ({
       {dragPlacement === 'beside' && (
         <div className="absolute inset-y-2 right-1 w-1 rounded bg-slate-950" />
       )}
-      <div className="absolute left-2 top-2 z-20 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+      {!readOnly && (
+        <div className="absolute left-2 top-2 z-20 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
           onClick={onAddBelow}
@@ -192,9 +195,10 @@ export const BlockWrapper = ({
         >
           <GripVertical size={16} />
         </button>
-      </div>
+        </div>
+      )}
 
-      {showSelector && (
+      {showSelector && !readOnly && (
         <div className="absolute left-10 top-0 z-[70] shadow-lg animate-in slide-in-from-left-2 duration-200">
           <BlockTypeSelector
             currentType={block.type}
@@ -233,7 +237,7 @@ export const BlockWrapper = ({
             {block.content ? (
               <div
                 ref={imageFrameRef}
-                draggable
+                draggable={!readOnly}
                 className={`relative overflow-hidden rounded bg-white ${imageAlignmentClass} ${
                   isImageSelected
                     ? 'outline outline-2 outline-slate-950 outline-offset-2'
@@ -241,6 +245,7 @@ export const BlockWrapper = ({
                 }`}
                 style={{ width: `${imageWidth}%` }}
                 onDragStart={(event) => {
+                  if (readOnly) return;
                   event.dataTransfer.effectAllowed = 'move';
                   event.dataTransfer.setData('text/plain', block.id);
                   onImageDragStart();
@@ -253,7 +258,7 @@ export const BlockWrapper = ({
                 }}
                 onBlur={() => setIsImageSelected(false)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Backspace' || event.key === 'Delete') {
+                  if (!readOnly && (event.key === 'Backspace' || event.key === 'Delete')) {
                     event.preventDefault();
                     onRemove();
                   }
@@ -266,7 +271,7 @@ export const BlockWrapper = ({
                   className="max-h-[520px] w-full object-contain bg-white"
                   draggable={false}
                 />
-                {isImageSelected && (
+                {isImageSelected && !readOnly && (
                   <>
                     <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-slate-200">
                       <button
@@ -350,6 +355,7 @@ export const BlockWrapper = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={readOnly}
                 className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-slate-200 px-4 py-10 text-sm font-medium text-slate-500 hover:bg-slate-50"
               >
                 <Upload size={18} />
@@ -375,9 +381,12 @@ export const BlockWrapper = ({
             ref={textareaRef}
             className={`w-full resize-none bg-transparent py-1 leading-relaxed transition-all placeholder:text-slate-300 focus:outline-none ${typeStyles[block.type]}`}
             value={block.content}
-            onChange={(e) => onUpdate(e.target.value, e)}
-            onKeyDown={onKeyDown}
+            onChange={(e) => {
+              if (!readOnly) onUpdate(e.target.value, e);
+            }}
+            onKeyDown={readOnly ? undefined : onKeyDown}
             onFocus={onFocus}
+            readOnly={readOnly}
             rows={1}
             placeholder={placeholders[block.type]}
           />

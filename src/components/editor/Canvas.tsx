@@ -21,10 +21,12 @@ export const Canvas = ({
   docId,
   pageId,
   pageTitle,
+  readOnly = false,
 }: {
   docId: string;
   pageId: string;
   pageTitle: string;
+  readOnly?: boolean;
 }) => {
   const {
     blocks,
@@ -80,6 +82,7 @@ export const Canvas = ({
   }, [pageBlocks]);
 
   const focusNewBlock = (type: Block['type'] = 'text', afterBlockId?: string) => {
+    if (readOnly) return '';
     const newId = addBlock(type, pageId, afterBlockId);
     setActiveBlockId(newId);
     return newId;
@@ -88,6 +91,7 @@ export const Canvas = ({
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>, blockId: string) => {
     const currentBlock = pageBlocks.find((block) => block.id === blockId);
     const currentIndex = pageBlocks.findIndex((block) => block.id === blockId);
+    if (readOnly) return;
 
     if (e.key === 'Enter' && !e.shiftKey && !slashMenu) {
       e.preventDefault();
@@ -121,6 +125,7 @@ export const Canvas = ({
     value: string,
     e: ChangeEvent<HTMLTextAreaElement>
   ) => {
+    if (readOnly) return;
     updateBlock(id, value);
 
     const cursorPosition = e.target.selectionStart;
@@ -140,6 +145,7 @@ export const Canvas = ({
 
   const handleSelectType = (type: Block['type']) => {
     if (!slashMenu) return;
+    if (readOnly) return;
 
     changeBlockType(slashMenu.blockId, type);
     const currentBlock = blocks.find((block) => block.id === slashMenu.blockId);
@@ -153,6 +159,7 @@ export const Canvas = ({
   };
 
   const handleUploadImage = async (blockId: string, file: File) => {
+    if (readOnly) return;
     try {
       if (!isFirebaseConfigured) {
         const localUrl = await readFileAsDataUrl(file);
@@ -184,6 +191,7 @@ export const Canvas = ({
   };
 
   const handlePasteImage = (block: Block, file: File) => {
+    if (readOnly) return;
     const targetBlockId =
       block.content.trim().length === 0 && block.type !== 'image'
         ? block.id
@@ -210,6 +218,7 @@ export const Canvas = ({
   };
 
   const handleCanvasPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     const imageFile = getImageFromClipboard(event);
     if (!imageFile) return;
 
@@ -240,6 +249,7 @@ export const Canvas = ({
   };
 
   const handleImageDragOver = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
+    if (readOnly) return;
     if (!dragState || dragState.blockId === targetBlock.id) return;
 
     event.preventDefault();
@@ -248,6 +258,7 @@ export const Canvas = ({
   };
 
   const handleImageDrop = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
+    if (readOnly) return;
     if (!dragState || dragState.blockId === targetBlock.id) return;
 
     event.preventDefault();
@@ -258,10 +269,10 @@ export const Canvas = ({
   };
 
   useEffect(() => {
-    if (pageBlocks.length === 0) {
+    if (!readOnly && pageBlocks.length === 0) {
       addBlock('text', pageId);
     }
-  }, [addBlock, pageId, pageBlocks.length]);
+  }, [addBlock, pageId, pageBlocks.length, readOnly]);
 
   const renderBlock = (block: Block, index: number) => (
     <BlockWrapper
@@ -282,24 +293,29 @@ export const Canvas = ({
       onChangeType={(type) => changeBlockType(block.id, type)}
       onKeyDown={(e) => handleKeyDown(e, block.id)}
       onFocus={() => setActiveBlockId(block.id)}
+      readOnly={readOnly}
     />
   );
 
   return (
     <div
       className="relative mx-auto min-h-screen max-w-4xl flex-1 px-6 py-12 md:px-12"
-      onPaste={handleCanvasPaste}
+      onPaste={readOnly ? undefined : handleCanvasPaste}
     >
       <input
         className="mb-2 w-full border-none bg-transparent text-5xl font-semibold tracking-tight text-slate-950 outline-none placeholder:text-slate-200 md:text-6xl"
         value={pageTitle}
-        onChange={(e) => updatePageTitle(pageId, e.target.value)}
+        onChange={(e) => {
+          if (!readOnly) updatePageTitle(pageId, e.target.value);
+        }}
         onKeyDown={(e) => {
+          if (readOnly) return;
           if (e.key === 'Enter') {
             e.preventDefault();
             focusNewBlock('text');
           }
         }}
+        readOnly={readOnly}
         placeholder="Titulo de la pagina"
       />
 

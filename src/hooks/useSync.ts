@@ -14,6 +14,14 @@ import {
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import type { Block, Page } from '../components/type/typeScript';
 
+type RemoteItemMeta = {
+  ownerWorkspaceId?: string;
+  sharePermission?: 'view' | 'edit';
+};
+
+const canSyncRemoteItem = (item: RemoteItemMeta) =>
+  !item.ownerWorkspaceId || item.sharePermission === 'edit';
+
 export const useSync = () => {
   const {
     blocks,
@@ -30,8 +38,8 @@ export const useSync = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const hasLoadedRef = useRef(false);
-  const knownBlockIds = useRef<Map<string, string | undefined>>(new Map());
-  const knownPageIds = useRef<Map<string, string | undefined>>(new Map());
+  const knownBlockIds = useRef<Map<string, RemoteItemMeta>>(new Map());
+  const knownPageIds = useRef<Map<string, RemoteItemMeta>>(new Map());
   const knownShareIds = useRef<Set<string>>(new Set());
 
   // 1. Auth listener
@@ -116,8 +124,14 @@ export const useSync = () => {
 
         setPages(finalPages);
         setBlocks(finalBlocks);
-        knownPageIds.current = new Map(finalPages.map(p => [p.id, p.ownerWorkspaceId]));
-        knownBlockIds.current = new Map(finalBlocks.map(b => [b.id, b.ownerWorkspaceId]));
+        knownPageIds.current = new Map(finalPages.map(p => [p.id, {
+          ownerWorkspaceId: p.ownerWorkspaceId,
+          sharePermission: p.sharePermission,
+        }]));
+        knownBlockIds.current = new Map(finalBlocks.map(b => [b.id, {
+          ownerWorkspaceId: b.ownerWorkspaceId,
+          sharePermission: b.sharePermission,
+        }]));
         console.log('[Sync] Workspace ready:', { pages: finalPages.length, blocks: finalBlocks.length });
       } catch (error) {
         console.error('[Sync] Failed to load workspace:', error);
@@ -136,16 +150,22 @@ export const useSync = () => {
     if (!isFirebaseConfigured || !user || loading) return;
 
     const performSync = async () => {
-      const pendingBlocks = blocks.filter(b => !b.synced);
-      const pendingPages = pages.filter(p => !p.synced);
+      const pendingBlocks = blocks.filter(b => !b.synced && canSyncRemoteItem(b));
+      const pendingPages = pages.filter(p => !p.synced && canSyncRemoteItem(p));
       const pendingShares = shares.filter(s => !s.synced);
 
       const currentBlockIds = new Set(blocks.map(b => b.id));
       const currentPageIds = new Set(pages.map(p => p.id));
       const currentShareIds = new Set(shares.map(s => s.id));
 
-      const deletedBlockIds = Array.from(knownBlockIds.current.keys()).filter(id => !currentBlockIds.has(id));
-      const deletedPageIds = Array.from(knownPageIds.current.keys()).filter(id => !currentPageIds.has(id));
+      const deletedBlockIds = Array.from(knownBlockIds.current.entries())
+        .filter(([, meta]) => canSyncRemoteItem(meta))
+        .map(([id]) => id)
+        .filter(id => !currentBlockIds.has(id));
+      const deletedPageIds = Array.from(knownPageIds.current.entries())
+        .filter(([, meta]) => canSyncRemoteItem(meta))
+        .map(([id]) => id)
+        .filter(id => !currentPageIds.has(id));
       const deletedShareIds = Array.from(knownShareIds.current).filter(id => !currentShareIds.has(id));
 
       const nothingToDo =
@@ -171,8 +191,8 @@ export const useSync = () => {
       try {
         if (deletedBlockIds.length > 0 || deletedPageIds.length > 0 || deletedShareIds.length > 0) {
           await Promise.all([
-            ...deletedBlockIds.map(id => deleteFirebaseBlock(wsId, id, knownBlockIds.current.get(id))),
-            ...deletedPageIds.map(id => deleteFirebasePage(wsId, id, knownPageIds.current.get(id))),
+            ...deletedBlockIds.map(id => deleteFirebaseBlock(wsId, id, knownBlockIds.current.get(id)?.ownerWorkspaceId)),
+            ...deletedPageIds.map(id => deleteFirebasePage(wsId, id, knownPageIds.current.get(id)?.ownerWorkspaceId)),
             ...deletedShareIds.map(id => deleteFirebaseShare(id)),
           ]);
         }
@@ -188,8 +208,14 @@ export const useSync = () => {
         markPagesAsSynced(pendingPages.map(p => p.id));
         markSharesAsSynced(pendingShares.map(s => s.id));
 
-        knownBlockIds.current = new Map(blocks.map(b => [b.id, b.ownerWorkspaceId]));
-        knownPageIds.current = new Map(pages.map(p => [p.id, p.ownerWorkspaceId]));
+        knownBlockIds.current = new Map(blocks.map(b => [b.id, {
+          ownerWorkspaceId: b.ownerWorkspaceId,
+          sharePermission: b.sharePermission,
+        }]));
+        knownPageIds.current = new Map(pages.map(p => [p.id, {
+          ownerWorkspaceId: p.ownerWorkspaceId,
+          sharePermission: p.sharePermission,
+        }]));
         knownShareIds.current = currentShareIds;
 
         console.log('[Sync] Saved successfully.');

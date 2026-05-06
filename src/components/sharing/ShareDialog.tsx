@@ -3,6 +3,7 @@ import { Check, Copy, Link as LinkIcon, Mail, Trash2, Users } from 'lucide-react
 import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
 import type { SharePermission, ShareTargetType } from '../type/typeScript';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -25,25 +26,56 @@ export const ShareDialog = ({
   docId,
   title,
 }: ShareDialogProps) => {
-  const { shares, addShare, removeShare, updateSharePermission } = useCodaStore();
+  const { pages, shares, addShare, removeShare, updateSharePermission } = useCodaStore();
   const [email, setEmail] = useState('');
   const [permission, setPermission] = useState<SharePermission>('view');
   const [copied, setCopied] = useState(false);
 
-  const targetShares = useMemo(
+  const directShares = useMemo(
     () => shares.filter((share) => share.targetType === targetType && share.targetId === targetId),
     [shares, targetId, targetType]
   );
 
+  const ancestorPageIds = useMemo(() => {
+    if (targetType !== 'page') return new Set<string>();
+
+    const pageById = new Map(pages.map((page) => [page.id, page]));
+    const ids = new Set<string>();
+    let current = pageById.get(targetId);
+
+    while (current?.parentId) {
+      ids.add(current.parentId);
+      current = pageById.get(current.parentId);
+    }
+
+    return ids;
+  }, [pages, targetId, targetType]);
+
+  const inheritedShares = useMemo(() => {
+    if (targetType !== 'page') return [];
+
+    return shares.filter((share) => {
+      const isWorkspaceShare = share.targetType === 'workspace' && share.docId === docId;
+      const isParentPageShare = share.targetType === 'page' && ancestorPageIds.has(share.targetId);
+      return isWorkspaceShare || isParentPageShare;
+    });
+  }, [ancestorPageIds, docId, shares, targetType]);
+
   const shareUrl = `${window.location.origin}/doc/${docId}${
     targetType === 'page' ? `?page=${targetId}` : ''
   }`;
+  const targetLabel = targetType === 'workspace' ? 'Puesto completo' : 'Pagina o subpagina';
+  const hasAnyAccess = directShares.length > 0 || inheritedShares.length > 0;
 
   const copyShareUrl = async () => {
-    await navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    toast.success('Enlace copiado');
-    window.setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      toast.success('Enlace copiado');
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('No se pudo copiar el enlace');
+    }
   };
 
   const invite = () => {
@@ -67,9 +99,25 @@ export const ShareDialog = ({
       open={open}
       onOpenChange={onOpenChange}
       title={`Compartir ${targetType === 'workspace' ? 'puesto de trabajo' : 'pagina'}`}
-      description={title}
+      description={
+        targetType === 'workspace'
+          ? 'El acceso incluye todas las paginas del puesto.'
+          : 'El acceso incluye esta pagina y sus subpaginas.'
+      }
     >
       <div className="space-y-5">
+        <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+          <div className="mb-1 flex items-center gap-2">
+            <Badge variant="secondary">{targetLabel}</Badge>
+            <span className="truncate text-sm font-medium text-slate-950">{title}</span>
+          </div>
+          <p className="text-xs text-slate-500">
+            {targetType === 'workspace'
+              ? 'Las personas invitadas podran ver el documento completo.'
+              : 'Las personas invitadas solo podran ver esta parte compartida.'}
+          </p>
+        </div>
+
         <div className="flex gap-2">
           <Input
             icon={<Mail size={15} />}
@@ -110,11 +158,11 @@ export const ShareDialog = ({
         <div>
           <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
             <Users size={15} />
-            Personas con acceso
+            Personas con acceso a {targetType === 'workspace' ? 'este puesto' : 'esta pagina'}
           </div>
-          {targetShares.length > 0 ? (
+          {hasAnyAccess ? (
             <div className="space-y-2">
-              {targetShares.map((share) => (
+              {directShares.map((share) => (
                 <div
                   key={share.id}
                   className="flex items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2"
@@ -124,8 +172,11 @@ export const ShareDialog = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-950">{share.email}</p>
-                    <p className="text-xs text-slate-500">Invitado localmente</p>
+                    <p className="text-xs text-slate-500">
+                      {share.permission === 'edit' ? 'Puede editar' : 'Solo puede ver'} · {title}
+                    </p>
                   </div>
+                  <Badge variant="outline">Directo</Badge>
                   <select
                     value={share.permission}
                     onChange={(event) => updateSharePermission(share.id, event.target.value as SharePermission)}
@@ -142,6 +193,26 @@ export const ShareDialog = ({
                   >
                     <Trash2 size={15} className="text-red-600" />
                   </Button>
+                </div>
+              ))}
+
+              {inheritedShares.map((share) => (
+                <div
+                  key={share.id}
+                  className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                    {share.email.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-950">{share.email}</p>
+                    <p className="text-xs text-slate-500">
+                      {share.permission === 'edit' ? 'Puede editar' : 'Solo puede ver'} · acceso heredado
+                    </p>
+                  </div>
+                  <Badge variant="secondary">
+                    {share.targetType === 'workspace' ? 'Por puesto' : 'Por pagina padre'}
+                  </Badge>
                 </div>
               ))}
             </div>

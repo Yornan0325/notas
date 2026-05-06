@@ -46,6 +46,7 @@ const EditorPage = () => {
 
   const currentPage = pages.find((page) => page.id === visibleActivePageId);
   const displayedRootPage = rootPage || currentPage;
+  const isSharedReadOnly = Boolean(currentPage?.ownerWorkspaceId && currentPage.sharePermission !== 'edit');
 
   useEffect(() => {
     if (!docId || initializedDocIdRef.current === docId) return;
@@ -74,6 +75,7 @@ const EditorPage = () => {
         activePageId={visibleActivePageId}
         onSelectPage={(id) => setActivePageId(id)}
         isCollapsed={isSidebarCollapsed}
+        readOnly={isSharedReadOnly}
       />
 
       <section className="flex min-w-0 flex-1 flex-col">
@@ -100,16 +102,18 @@ const EditorPage = () => {
             {isSidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
           </Button>
 
-          <Button
-            variant="outline"
-            className='absolute right-4'
-            size="sm"
-            icon={<Share2 size={15} />}
-            onClick={() => setShareTarget('page')}
-            disabled={!currentPage}
-          >
-            Pagina
-          </Button>
+          {!isSharedReadOnly && (
+            <Button
+              variant="outline"
+              className='absolute right-4'
+              size="sm"
+              icon={<Share2 size={15} />}
+              onClick={() => setShareTarget('page')}
+              disabled={!currentPage}
+            >
+              Pagina
+            </Button>
+          )}
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto bg-white">
@@ -119,6 +123,7 @@ const EditorPage = () => {
                 docId={docId || ''}
                 pageId={visibleActivePageId}
                 pageTitle={currentPage?.title || ''}
+                readOnly={isSharedReadOnly}
               />
             </div>
           ) : (
