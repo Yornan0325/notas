@@ -97,6 +97,18 @@ export const deleteFirebaseShare = async (shareId: string) => {
   await deleteDoc(doc(sharesCollection(db), shareId));
 };
 
+export const loadMySharesFromFirebase = async (wsId: string): Promise<ShareInvite[]> => {
+  const { db } = getFirebaseServices();
+  try {
+    const q = query(sharesCollection(db), where('ownerWorkspaceId', '==', wsId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => d.data() as ShareInvite);
+  } catch (error) {
+    console.error('[Sync] Error loading own shares:', error);
+    return [];
+  }
+};
+
 const collectSharedPageTree = (pages: Page[], rootId: string) => {
   const allowedIds = new Set<string>([rootId]);
   let didAdd = true;

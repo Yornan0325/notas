@@ -60,12 +60,23 @@ export const ShareDialog = ({
       return isWorkspaceShare || isParentPageShare;
     });
   }, [ancestorPageIds, docId, shares, targetType]);
+  const otherDocShares = useMemo(() => {
+    if (targetType !== 'page') return [];
+
+    const visibleShareIds = new Set([
+      ...directShares.map((share) => share.id),
+      ...inheritedShares.map((share) => share.id),
+    ]);
+
+    return shares.filter((share) => share.docId === docId && !visibleShareIds.has(share.id));
+  }, [directShares, docId, inheritedShares, shares, targetType]);
 
   const shareUrl = `${window.location.origin}/doc/${docId}${
     targetType === 'page' ? `?page=${targetId}` : ''
   }`;
   const targetLabel = targetType === 'workspace' ? 'Puesto completo' : 'Pagina o subpagina';
   const hasAnyAccess = directShares.length > 0 || inheritedShares.length > 0;
+  const hasShareContext = hasAnyAccess || otherDocShares.length > 0;
 
   const copyShareUrl = async () => {
     try {
@@ -160,7 +171,7 @@ export const ShareDialog = ({
             <Users size={15} />
             Personas con acceso a {targetType === 'workspace' ? 'este puesto' : 'esta pagina'}
           </div>
-          {hasAnyAccess ? (
+          {hasShareContext ? (
             <div className="space-y-2">
               {directShares.map((share) => (
                 <div
@@ -215,6 +226,12 @@ export const ShareDialog = ({
                   </Badge>
                 </div>
               ))}
+
+              {directShares.length === 0 && inheritedShares.length === 0 && otherDocShares.length > 0 && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Hay invitaciones en este documento, pero no aplican a esta pagina. Comparte esta pagina directamente o comparte una pagina padre para que aparezcan aqui.
+                </div>
+              )}
             </div>
           ) : (
             <p className="rounded-md border border-dashed border-slate-200 p-4 text-center text-sm text-slate-500">

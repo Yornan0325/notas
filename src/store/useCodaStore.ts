@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   Block,
@@ -54,6 +54,7 @@ interface CodaState {
   updateSharePermission: (id: string, permission: SharePermission) => void;
   removeShare: (id: string) => void;
   markSharesAsSynced: (ids: string[]) => void;
+  setShares: (shares: ShareInvite[]) => void;
   clearWorkspace: () => void;
 }
 
@@ -378,15 +379,41 @@ export const useCodaStore = create<CodaState>()(
         })),
 
       addShare: (share) => {
+        const normalizedEmail = share.email.trim().toLowerCase();
         const invite: ShareInvite = {
           ...share,
+          email: normalizedEmail,
           id: crypto.randomUUID(),
           token: crypto.randomUUID(),
           createdAt: now(),
           synced: false,
         };
 
-        set((state) => ({ shares: [...state.shares, invite] }));
+        set((state) => {
+          const existingShare = state.shares.find(
+            (item) =>
+              item.targetType === share.targetType &&
+              item.targetId === share.targetId &&
+              item.email.trim().toLowerCase() === normalizedEmail
+          );
+
+          if (existingShare) {
+            return {
+              shares: state.shares.map((item) =>
+                item.id === existingShare.id
+                  ? {
+                      ...item,
+                      title: share.title,
+                      permission: share.permission,
+                      synced: false,
+                    }
+                  : item
+              ),
+            };
+          }
+
+          return { shares: [...state.shares, invite] };
+        });
         return invite;
       },
 
@@ -411,6 +438,7 @@ export const useCodaStore = create<CodaState>()(
 
       setBlocks: (blocks) => set({ blocks }),
       setPages: (pages) => set({ pages }),
+      setShares: (shares) => set({ shares: shares.map(s => ({ ...s, synced: true })) }),
       clearWorkspace: () => set({ blocks: [], pages: [], shares: [] }),
     }),
     { name: 'coda-storage' }

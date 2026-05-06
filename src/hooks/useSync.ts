@@ -10,6 +10,7 @@ import {
   syncSharesToFirebase,
   syncWorkspaceToFirebase,
   loadSharedWorkspaceData,
+  loadMySharesFromFirebase,
 } from '../api/firebaseQueries';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import type { Block, Page } from '../components/type/typeScript';
@@ -32,6 +33,7 @@ export const useSync = () => {
     markSharesAsSynced,
     setBlocks,
     setPages,
+    setShares,
     clearWorkspace,
   } = useCodaStore();
 
@@ -124,6 +126,19 @@ export const useSync = () => {
 
         setPages(finalPages);
         setBlocks(finalBlocks);
+
+        // Cargar invitaciones propias del usuario
+        const myShares = await loadMySharesFromFirebase(wsId);
+        const currentStorePostLoad = useCodaStore.getState();
+        const unsyncedShares = currentStorePostLoad.shares.filter(s => !s.synced);
+        const remoteShareIds = new Set(myShares.map(s => s.id));
+        const mergedShares = [
+          ...myShares,
+          ...unsyncedShares.filter(s => !remoteShareIds.has(s.id)),
+        ];
+        setShares(mergedShares);
+        knownShareIds.current = new Set(mergedShares.map(s => s.id));
+
         knownPageIds.current = new Map(finalPages.map(p => [p.id, {
           ownerWorkspaceId: p.ownerWorkspaceId,
           sharePermission: p.sharePermission,
@@ -143,7 +158,7 @@ export const useSync = () => {
     };
 
     loadRemoteWorkspace();
-  }, [user, setBlocks, setPages]);
+  }, [user, setBlocks, setPages, setShares]);
 
   // 3. Sync local changes to Firebase
   useEffect(() => {
