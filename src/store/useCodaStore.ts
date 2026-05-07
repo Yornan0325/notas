@@ -66,20 +66,58 @@ interface CodaState {
 
 const now = () => new Date().toISOString();
 
-const normalizeBlockOrderForPage = (blocks: Block[], pageId: string) => {
-  let order = 0;
+const getOrderedPageBlocks = (blocks: Block[], pageId: string) =>
+  blocks
+    .map((block, index) => ({ block, index }))
+    .filter((item) => item.block.pageId === pageId)
+    .sort((a, b) => {
+      const orderA = a.block.blockOrder ?? a.index;
+      const orderB = b.block.blockOrder ?? b.index;
+      return orderA === orderB ? a.index - b.index : orderA - orderB;
+    })
+    .map((item) => item.block);
 
-  return blocks.map((block) => {
-    if (block.pageId !== pageId) return block;
+const rebuildBlocksForPage = (
+  blocks: Block[],
+  pageId: string,
+  orderedPageBlocks: Block[],
+  markUnsynced = true
+) => {
+  const normalizedPageBlocks = orderedPageBlocks.map((block, index) => ({
+    ...block,
+    blockOrder: index,
+    synced: markUnsynced ? false : block.synced,
+  }));
+  const firstPageBlockIndex = blocks.findIndex((block) => block.pageId === pageId);
+  const blocksWithoutPage = blocks.filter((block) => block.pageId !== pageId);
 
-    const nextBlock = {
+  if (firstPageBlockIndex === -1) {
+    return [...blocksWithoutPage, ...normalizedPageBlocks];
+  }
+
+  return [
+    ...blocksWithoutPage.slice(0, firstPageBlockIndex),
+    ...normalizedPageBlocks,
+    ...blocksWithoutPage.slice(firstPageBlockIndex),
+  ];
+};
+
+const normalizeLoadedBlocks = (blocks: Block[]) => {
+  const pageIds = Array.from(new Set(blocks.map((block) => block.pageId)));
+  let nextBlocks = [...blocks];
+
+  pageIds.forEach((pageId) => {
+    const orderedPageBlocks = getOrderedPageBlocks(nextBlocks, pageId);
+    const normalizedPageBlocks = orderedPageBlocks.map((block, index) => ({
       ...block,
-      blockOrder: order,
-      synced: false,
-    };
-    order += 1;
-    return nextBlock;
+      blockOrder: index,
+      synced: block.blockOrder === index ? block.synced : false,
+    }));
+
+    nextBlocks = rebuildBlocksForPage(nextBlocks, pageId, normalizedPageBlocks, false);
   });
+
+  return nextBlocks;
 };
 
 const collectPageTreeIds = (pages: Page[], rootId: string) => {
@@ -246,41 +284,26 @@ export const useCodaStore = create<CodaState>()(
 
         set((state) => {
           const page = state.pages.find(p => p.id === pageId);
+          const timestamp = now();
           const newBlock: Block = { 
             id, 
             type, 
             content: '', 
             synced: false, 
             pageId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
             ownerWorkspaceId: page?.ownerWorkspaceId
           };
-          const pageBlocks = state.blocks.filter((block) => block.pageId === pageId);
+          const pageBlocks = getOrderedPageBlocks(state.blocks, pageId);
           const insertAtPageIndex = afterBlockId
             ? pageBlocks.findIndex((block) => block.id === afterBlockId) + 1
             : pageBlocks.length;
-          let seenInPage = 0;
-          let inserted = false;
-          const nextBlocks: Block[] = [];
-
-          for (const block of state.blocks) {
-            if (block.pageId === pageId && seenInPage === insertAtPageIndex) {
-              nextBlocks.push(newBlock);
-              inserted = true;
-            }
-
-            nextBlocks.push(block);
-
-            if (block.pageId === pageId) {
-              seenInPage += 1;
-            }
-          }
-
-          if (!inserted) {
-            nextBlocks.push(newBlock);
-          }
+          const nextPageBlocks = [...pageBlocks];
+          nextPageBlocks.splice(Math.max(0, insertAtPageIndex), 0, newBlock);
 
           return {
-            blocks: normalizeBlockOrderForPage(nextBlocks, pageId),
+            blocks: rebuildBlocksForPage(state.blocks, pageId, nextPageBlocks),
             pages: state.pages.map((page) =>
               page.id === pageId ? { ...page, updatedAt: now(), synced: false } : page
             ),
@@ -295,26 +318,21 @@ export const useCodaStore = create<CodaState>()(
 
         set((state) => {
           const page = state.pages.find((item) => item.id === pageId);
+          const timestamp = now();
           const newBlock: Block = {
             id,
             type,
             content: '',
             synced: false,
             pageId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
             ownerWorkspaceId: page?.ownerWorkspaceId,
           };
-
-          const firstPageBlockIndex = state.blocks.findIndex((block) => block.pageId === pageId);
-          const nextBlocks = [...state.blocks];
-
-          if (firstPageBlockIndex === -1) {
-            nextBlocks.push(newBlock);
-          } else {
-            nextBlocks.splice(firstPageBlockIndex, 0, newBlock);
-          }
+          const pageBlocks = getOrderedPageBlocks(state.blocks, pageId);
 
           return {
-            blocks: normalizeBlockOrderForPage(nextBlocks, pageId),
+            blocks: rebuildBlocksForPage(state.blocks, pageId, [newBlock, ...pageBlocks]),
             pages: state.pages.map((item) =>
               item.id === pageId ? { ...item, updatedAt: now(), synced: false } : item
             ),
@@ -386,8 +404,10 @@ export const useCodaStore = create<CodaState>()(
             return state;
           }
 
-          const blocksWithoutMoving = state.blocks.filter((block) => block.id !== id);
-          const targetIndex = blocksWithoutMoving.findIndex((block) => block.id === targetId);
+          const pageBlocksWithoutMoving = getOrderedPageBlocks(state.blocks, movingBlock.pageId).filter(
+            (block) => block.id !== id
+          );
+          const targetIndex = pageBlocksWithoutMoving.findIndex((block) => block.id === targetId);
           const insertIndex = placement === 'before' ? targetIndex : targetIndex + 1;
           const movedBlock: Block = {
             ...movingBlock,
@@ -395,12 +415,12 @@ export const useCodaStore = create<CodaState>()(
             imageWidth: placement === 'beside' ? Math.min(movingBlock.imageWidth || 50, 50) : movingBlock.imageWidth,
             synced: false,
           };
-          const nextBlocks = [...blocksWithoutMoving];
+          const nextPageBlocks = [...pageBlocksWithoutMoving];
 
-          nextBlocks.splice(insertIndex, 0, movedBlock);
+          nextPageBlocks.splice(insertIndex, 0, movedBlock);
 
           return {
-            blocks: normalizeBlockOrderForPage(nextBlocks.map((block) =>
+            blocks: rebuildBlocksForPage(state.blocks, movingBlock.pageId, nextPageBlocks.map((block) =>
               placement === 'beside' && block.id === targetId && block.type === 'image'
                 ? {
                     ...block,
@@ -409,7 +429,7 @@ export const useCodaStore = create<CodaState>()(
                     synced: false,
                   }
                 : block
-            ), movingBlock.pageId),
+            )),
             pages: state.pages.map((page) =>
               page.id === movingBlock.pageId ? { ...page, updatedAt: now(), synced: false } : page
             ),
@@ -452,7 +472,7 @@ export const useCodaStore = create<CodaState>()(
           if (!blockToRemove) return { blocks: nextBlocks };
 
           return {
-            blocks: normalizeBlockOrderForPage(nextBlocks, blockToRemove.pageId),
+            blocks: rebuildBlocksForPage(nextBlocks, blockToRemove.pageId, getOrderedPageBlocks(nextBlocks, blockToRemove.pageId)),
             pages: state.pages.map((page) =>
               page.id === blockToRemove.pageId ? { ...page, updatedAt: now(), synced: false } : page
             ),
@@ -517,7 +537,7 @@ export const useCodaStore = create<CodaState>()(
           ),
         })),
 
-      setBlocks: (blocks) => set({ blocks }),
+      setBlocks: (blocks) => set({ blocks: normalizeLoadedBlocks(blocks) }),
       setPages: (pages) => set({ pages }),
       setShares: (shares) => set({ shares: shares.map(s => ({ ...s, synced: true })) }),
       addProjectFolder: (name) =>

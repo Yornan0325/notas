@@ -26,6 +26,8 @@ export interface Block {
   content: string;
   synced: boolean;
   blockOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
   attachmentPath?: string;
   attachmentName?: string;
   imageWidth?: number;
