@@ -10,13 +10,15 @@ interface IconOption {
 
 const iconOptions: IconOption[] = [
   { icon: '📄', label: 'Documento', keywords: 'documento pagina archivo' },
+  { icon: '💻', label: 'computadora', keywords: 'computadora portatil laptop' },
+  { icon: '📁', label: 'Carpeta', keywords: 'carpeta documentos archivos' },
+  { icon: '📋', label: 'Carpeta', keywords: 'carpeta documentos archivos' },
   { icon: '📝', label: 'Notas', keywords: 'nota escribir pendientes' },
   { icon: '✅', label: 'Pendientes', keywords: 'pendientes tareas checklist' },
   { icon: '📘', label: 'Orden', keywords: 'orden libro guia manual' },
   { icon: '🧠', label: 'Ideas', keywords: 'ideas cerebro pensar' },
   { icon: '🧰', label: 'Herramientas', keywords: 'herramientas toolbox trabajo' },
   { icon: '⚙️', label: 'Sistema', keywords: 'sistema configuracion engranaje' },
-  { icon: '🧪', label: 'Pruebas', keywords: 'pruebas laboratorio test' },
   { icon: '💧', label: 'Agua', keywords: 'agua nivel sensor liquido' },
   { icon: '🌡️', label: 'Temperatura', keywords: 'temperatura sensor clima' },
   { icon: '🔌', label: 'Electronica', keywords: 'electronica cable energia' },
@@ -25,7 +27,6 @@ const iconOptions: IconOption[] = [
   { icon: '🤖', label: 'Robotica', keywords: 'robot automatizacion' },
   { icon: '📡', label: 'Sensor', keywords: 'sensor senal medicion' },
   { icon: '📊', label: 'Datos', keywords: 'datos graficas tabla' },
-  { icon: '📦', label: 'Inventario', keywords: 'inventario caja elementos' },
   { icon: '🏗️', label: 'Proyecto', keywords: 'proyecto construccion obra' },
   { icon: '🚀', label: 'Lanzamiento', keywords: 'lanzamiento avance inicio' },
   { icon: '🔒', label: 'Privado', keywords: 'privado seguridad candado' },
@@ -44,6 +45,7 @@ const iconOptions: IconOption[] = [
   { icon: '🟢', label: 'Verde', keywords: 'verde circulo color' },
   { icon: '🟡', label: 'Amarillo', keywords: 'amarillo circulo color' },
   { icon: '🔴', label: 'Rojo', keywords: 'rojo circulo color' },
+
 ];
 
 export const PageIconPicker = ({

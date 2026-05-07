@@ -67,6 +67,10 @@ export const ViewBlock = ({
     commit({ ...view, rows: [...view.rows, view.columns.map(() => '')] });
   };
 
+  const removeRow = (rowIndex: number) => {
+    commit({ ...view, rows: view.rows.filter((_, index) => index !== rowIndex) });
+  };
+
   const renderTable = () => (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-collapse text-left">
@@ -89,11 +93,12 @@ export const ViewBlock = ({
                 />
               </th>
             ))}
+            {!readOnly && <th className="w-10" />}
           </tr>
         </thead>
         <tbody>
           {visibleRows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="border-b border-slate-200">
+            <tr key={rowIndex} className="group/row border-b border-slate-200">
               {view.columns.map((_, columnIndex) => (
                 <td key={`${rowIndex}-${columnIndex}`} className="px-2 py-2 align-top">
                   <input
@@ -107,6 +112,19 @@ export const ViewBlock = ({
                   />
                 </td>
               ))}
+              {!readOnly && (
+                <td className="w-10 px-1 py-2 align-top">
+                  <button
+                    type="button"
+                    onClick={() => removeRow(rowIndex)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover/row:opacity-100"
+                    title="Eliminar fila"
+                    aria-label="Eliminar fila"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
