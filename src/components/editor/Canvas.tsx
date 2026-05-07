@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
 import { BlockWrapper } from './BlockWrapper';
 import { SlashMenu } from './SlashMenu';
-import type { Block } from '../type/typeScript';
+import type { Block, Page } from '../type/typeScript';
 import { getDefaultViewContent, isViewBlockType, stringifyViewContent, type ViewBlockType } from './viewBlocks';
 
 const readFileAsDataUrl = (file: File) =>
@@ -84,11 +84,15 @@ const getBlockPlainText = (content: string) => {
 export const Canvas = ({
   pageId,
   pageTitle,
+  subpages = [],
+  onSelectPage,
   readOnly = false,
 }: {
   docId: string;
   pageId: string;
   pageTitle: string;
+  subpages?: Page[];
+  onSelectPage?: (id: string) => void;
   readOnly?: boolean;
 }) => {
   const {
@@ -477,6 +481,26 @@ export const Canvas = ({
         readOnly={readOnly}
         placeholder="Titulo de la pagina"
       />
+
+      {subpages.length > 0 && (
+        <div className="mt-10 flex flex-wrap gap-3">
+          {subpages.map((page) => (
+            <button
+              key={page.id}
+              type="button"
+              onClick={() => onSelectPage?.(page.id)}
+              className="group flex min-h-10 max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 hover:shadow"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center text-2xl">
+                {page.icon || 'P'}
+              </span>
+              <span className="max-w-[260px] truncate text-lg font-bold text-slate-950">
+                {page.title}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {pageBlocks.length === 0 && (
         <p className="mb-12 text-lg text-slate-400">

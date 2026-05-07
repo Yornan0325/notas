@@ -45,6 +45,13 @@ const EditorPage = () => {
   }, [activePageId, internalPages, requestedPageId]);
 
   const currentPage = pages.find((page) => page.id === visibleActivePageId);
+  const currentSubpages = useMemo(
+    () =>
+      pages
+        .filter((page) => page.parentId === visibleActivePageId)
+        .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || '')),
+    [pages, visibleActivePageId]
+  );
   const displayedRootPage = rootPage || currentPage;
   const isSharedFromAnotherWorkspace = Boolean(
     currentPage?.ownerWorkspaceId && currentPage.ownerWorkspaceId !== user?.email
@@ -126,6 +133,8 @@ const EditorPage = () => {
                 docId={docId || ''}
                 pageId={visibleActivePageId}
                 pageTitle={currentPage?.title || ''}
+                subpages={currentSubpages}
+                onSelectPage={setActivePageId}
                 readOnly={isSharedReadOnly}
               />
             </div>
