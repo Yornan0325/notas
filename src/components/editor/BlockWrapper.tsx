@@ -243,7 +243,7 @@ export const BlockWrapper = ({
     if (editor.innerHTML !== block.content) {
       editor.innerHTML = block.content;
     }
-  }, [block.content]);
+  }, [block.content, isCollapsed]);
 
   useEffect(() => {
     if (!isFocused || !richTextRef.current) return;
