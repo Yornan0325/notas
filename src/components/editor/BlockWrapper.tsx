@@ -8,21 +8,34 @@ import type {
 } from 'react';
 import {
   AlignCenter,
+  AlignJustify,
   AlignLeft,
   AlignRight,
   Bold,
   Check,
+  CheckSquare,
   ChevronRight,
+  Code,
   Columns3,
   GripVertical,
+  Heading1,
+  Heading2,
+  Heading3,
   Image,
   Italic,
+  Link,
+  List,
+  ListOrdered,
   Maximize2,
   Megaphone,
+  MessageSquarePlus,
   Palette,
   Plus,
+  Quote,
+  Sparkles,
   Strikethrough,
   Trash2,
+  Type,
   Underline,
   Upload,
 } from 'lucide-react';
@@ -47,6 +60,7 @@ interface BlockWrapperProps {
   onAddViewBelow: (type: ViewBlockType) => void;
   onUpdate: (content: string, e?: ChangeEvent<HTMLTextAreaElement>) => void;
   onChangeType: (type: Block['type']) => void;
+  onToggleCollapse: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
   onFocus: () => void;
   readOnly?: boolean;
@@ -100,6 +114,41 @@ const placeholders: Record<Block['type'], string> = {
   view_board: 'Board',
 };
 
+const textStyleOptions = [
+  { title: 'Texto', icon: Type, command: 'formatBlock', value: 'div' },
+  { title: 'Titulo 1', icon: Heading1, command: 'formatBlock', value: 'h1' },
+  { title: 'Titulo 2', icon: Heading2, command: 'formatBlock', value: 'h2' },
+  { title: 'Titulo 3', icon: Heading3, command: 'formatBlock', value: 'h3' },
+];
+
+const listStyleOptions = [
+  { title: 'Lista', icon: List, action: 'unordered' },
+  { title: 'Numerada', icon: ListOrdered, action: 'ordered' },
+  { title: 'Checklist', icon: CheckSquare, action: 'checklist' },
+  { title: 'Toggle', icon: ChevronRight, action: 'toggle' },
+];
+
+const quoteStyleOptions = [
+  { title: 'Cita', icon: Quote, action: 'quote' },
+  { title: 'Codigo', icon: Code, action: 'code' },
+  { title: 'Aviso', icon: Megaphone, action: 'callout' },
+];
+
+const decorOptions = [
+  { label: 'Underline', shortcut: 'Ctrl U', icon: Underline, action: 'underline' },
+  { label: 'Strikethrough', shortcut: 'Ctrl Shift K', icon: Strikethrough, action: 'strike' },
+  { label: 'Inline Code', shortcut: '`', icon: Code, action: 'code' },
+];
+
+const alignOptions = [
+  { title: 'Izquierda', icon: AlignLeft, command: 'justifyLeft' },
+  { title: 'Centro', icon: AlignCenter, command: 'justifyCenter' },
+  { title: 'Derecha', icon: AlignRight, command: 'justifyRight' },
+  { title: 'Justificar', icon: AlignJustify, command: 'justifyFull' },
+  { title: 'Reducir sangria', icon: AlignLeft, command: 'outdent' },
+  { title: 'Aumentar sangria', icon: AlignRight, command: 'indent' },
+];
+
 const sanitizePastedHtml = (html: string) => {
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   const blockedTags = ['script', 'style', 'meta', 'link', 'iframe', 'object', 'embed'];
@@ -123,6 +172,19 @@ const sanitizePastedHtml = (html: string) => {
   return parsed.body.innerHTML;
 };
 
+const getPlainTextFromHtml = (html: string) => {
+  const parsed = new DOMParser().parseFromString(html || '', 'text/html');
+  return parsed.body.textContent?.trim() || '';
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
 export const BlockWrapper = ({
   block,
   index,
@@ -139,6 +201,7 @@ export const BlockWrapper = ({
   onAddViewBelow,
   onUpdate,
   onChangeType,
+  onToggleCollapse,
   onKeyDown,
   onFocus,
   readOnly = false,
@@ -147,7 +210,7 @@ export const BlockWrapper = ({
   const [isTodoChecked, setIsTodoChecked] = useState(false);
   const [isImageSelected, setIsImageSelected] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState<{ left: number; top: number } | null>(null);
-  const [colorPanel, setColorPanel] = useState<'text' | 'highlight' | null>(null);
+  const [toolbarMenu, setToolbarMenu] = useState<'style' | 'decor' | 'align' | 'color' | 'highlight' | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const richTextRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,6 +219,8 @@ export const BlockWrapper = ({
   const imageAlign = block.imageAlign || 'center';
   const imageFlow = block.imageFlow || 'stack';
   const isViewBlock = isViewBlockType(block.type);
+  const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code';
+  const isCollapsed = canCollapse && Boolean(block.isCollapsed);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -271,6 +336,20 @@ export const BlockWrapper = ({
     updateToolbarPosition();
   };
 
+  const applyInlineCode = () => {
+    const editor = richTextRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return;
+
+    const selectedText = selection.toString();
+    document.execCommand('insertHTML', false, `<code>${escapeHtml(selectedText)}</code>`);
+    onUpdate(editor.innerHTML);
+    updateToolbarPosition();
+  };
+
   const insertRichHtml = (html: string) => {
     const editor = richTextRef.current;
     if (!editor) return;
@@ -313,13 +392,19 @@ export const BlockWrapper = ({
   const highlightColorOptions = ['#fecaca', '#fed7aa', '#fef3c7', '#bbf7d0', '#bfdbfe', '#e9d5ff', '#fbcfe8', '#e5e7eb'];
 
   const clearFormattingColor = () => {
-    if (colorPanel === 'text') {
+    if (toolbarMenu === 'color') {
       applyRichTextCommand('removeFormat');
       return;
     }
 
     applyRichTextCommand('backColor', 'transparent');
   };
+
+  const toolbarButtonClass =
+    'flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950';
+
+  const dropdownButtonClass =
+    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100';
 
   return (
     <div
@@ -362,8 +447,13 @@ export const BlockWrapper = ({
         <div className="absolute left-10 top-0 z-[70] shadow-lg animate-in slide-in-from-left-2 duration-200">
           <BlockTypeSelector
             currentType={block.type}
+            isCollapsed={Boolean(block.isCollapsed)}
             onSelect={(type) => {
               onChangeType(type);
+              setShowSelector(false);
+            }}
+            onToggleCollapse={() => {
+              if (canCollapse) onToggleCollapse();
               setShowSelector(false);
             }}
           />
@@ -398,14 +488,78 @@ export const BlockWrapper = ({
             style={{ left: toolbarPosition.left, top: toolbarPosition.top }}
             onMouseDown={(event) => event.preventDefault()}
           >
-            <button
-              type="button"
-              onClick={() => applyRichTextCommand('removeFormat')}
-              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
-              title="Texto normal"
-            >
-              <span className="text-lg font-semibold">T</span>
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setToolbarMenu((value) => (value === 'style' ? null : 'style'))}
+                className={`${toolbarButtonClass} ${toolbarMenu === 'style' ? 'bg-slate-100 text-slate-950' : ''}`}
+                title="Estilo de texto"
+              >
+                <Type size={19} />
+                <span className="text-xs text-slate-400">⌄</span>
+              </button>
+              {toolbarMenu === 'style' && (
+                <div className="absolute left-0 top-12 w-[212px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                  <p className="mb-2 text-sm font-semibold text-slate-500">Text</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {textStyleOptions.map((item) => (
+                      <button
+                        key={item.title}
+                        type="button"
+                        onClick={() => {
+                          applyRichTextCommand(item.command, item.value);
+                          setToolbarMenu(null);
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                        title={item.title}
+                      >
+                        <item.icon size={20} />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="my-3 border-t border-dashed border-slate-200" />
+                  <p className="mb-2 text-sm font-semibold text-slate-500">Lists</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {listStyleOptions.map((item) => (
+                      <button
+                        key={item.title}
+                        type="button"
+                        onClick={() => {
+                          if (item.action === 'ordered') applyRichTextCommand('insertOrderedList');
+                          else if (item.action === 'toggle') onChangeType('toggle_list');
+                          else applyRichTextCommand('insertUnorderedList');
+                          setToolbarMenu(null);
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                        title={item.title}
+                      >
+                        <item.icon size={20} />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="my-3 border-t border-dashed border-slate-200" />
+                  <p className="mb-2 text-sm font-semibold text-slate-500">Quote</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {quoteStyleOptions.map((item) => (
+                      <button
+                        key={item.title}
+                        type="button"
+                        onClick={() => {
+                          if (item.action === 'quote') applyRichTextCommand('formatBlock', 'blockquote');
+                          if (item.action === 'code') applyInlineCode();
+                          if (item.action === 'callout') onChangeType('callout');
+                          setToolbarMenu(null);
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                        title={item.title}
+                      >
+                        <item.icon size={20} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => applyRichTextCommand('bold')}
@@ -424,25 +578,39 @@ export const BlockWrapper = ({
             </button>
             <button
               type="button"
-              onClick={() => applyRichTextCommand('underline')}
-              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
-              title="Subrayar"
+              onClick={() => setToolbarMenu((value) => (value === 'decor' ? null : 'decor'))}
+              className={`${toolbarButtonClass} ${toolbarMenu === 'decor' ? 'bg-slate-100 text-slate-950' : ''}`}
+              title="Decoracion"
             >
-              <Underline size={18} />
+              <Underline size={19} />
+              <span className="text-xs text-slate-400">⌄</span>
             </button>
-            <button
-              type="button"
-              onClick={() => applyRichTextCommand('strikeThrough')}
-              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
-              title="Tachar"
-            >
-              <Strikethrough size={18} />
-            </button>
+            {toolbarMenu === 'decor' && (
+              <div className="absolute left-[132px] top-12 w-[272px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                {decorOptions.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      if (item.action === 'underline') applyRichTextCommand('underline');
+                      if (item.action === 'strike') applyRichTextCommand('strikeThrough');
+                      if (item.action === 'code') applyInlineCode();
+                      setToolbarMenu(null);
+                    }}
+                    className={dropdownButtonClass}
+                  >
+                    <item.icon size={20} className="text-slate-500" />
+                    <span className="flex-1">{item.label}</span>
+                    <span className="text-xs font-semibold text-slate-400">{item.shortcut}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="mx-1 h-6 w-px bg-slate-200" />
             <div className="relative flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setColorPanel((value) => (value === 'text' ? null : 'text'))}
+                onClick={() => setToolbarMenu((value) => (value === 'color' ? null : 'color'))}
                 className="flex h-8 items-center gap-1 rounded-md px-2 hover:bg-slate-100"
                 title="Color de texto"
               >
@@ -451,7 +619,7 @@ export const BlockWrapper = ({
               </button>
               <button
                 type="button"
-                onClick={() => setColorPanel((value) => (value === 'highlight' ? null : 'highlight'))}
+                onClick={() => setToolbarMenu((value) => (value === 'highlight' ? null : 'highlight'))}
                 className="flex h-8 items-center gap-1 rounded-md px-2 hover:bg-slate-100"
                 title="Color de fondo"
               >
@@ -459,28 +627,28 @@ export const BlockWrapper = ({
                 <span className="text-xs text-slate-400">⌄</span>
               </button>
 
-              {colorPanel && (
+              {(toolbarMenu === 'color' || toolbarMenu === 'highlight') && (
                 <div className="absolute left-0 top-11 w-[232px] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
                   <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-500">
                     <Palette size={15} />
-                    {colorPanel === 'text' ? 'Text color' : 'Color and highlight'}
+                    {toolbarMenu === 'color' ? 'Text color' : 'Color and highlight'}
                   </div>
                   <div className="grid grid-cols-4 gap-2">
-                    {(colorPanel === 'text' ? textColorOptions : highlightColorOptions).map((color) => (
+                    {(toolbarMenu === 'color' ? textColorOptions : highlightColorOptions).map((color) => (
                       <button
                         key={color}
                         type="button"
                         onClick={() => {
-                          applyRichTextCommand(colorPanel === 'text' ? 'foreColor' : 'backColor', color);
-                          setColorPanel(null);
+                          applyRichTextCommand(toolbarMenu === 'color' ? 'foreColor' : 'backColor', color);
+                          setToolbarMenu(null);
                         }}
                         className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-lg font-semibold shadow-sm hover:border-slate-300"
                         style={
-                          colorPanel === 'text'
+                          toolbarMenu === 'color'
                             ? { color }
                             : { backgroundColor: color, color: '#4b5563' }
                         }
-                        title={colorPanel === 'text' ? 'Aplicar color de texto' : 'Aplicar fondo'}
+                        title={toolbarMenu === 'color' ? 'Aplicar color de texto' : 'Aplicar fondo'}
                       >
                         A
                       </button>
@@ -491,7 +659,7 @@ export const BlockWrapper = ({
                     type="button"
                     onClick={() => {
                       clearFormattingColor();
-                      setColorPanel(null);
+                      setToolbarMenu(null);
                     }}
                     className="text-sm font-medium text-blue-700 hover:underline"
                   >
@@ -500,6 +668,52 @@ export const BlockWrapper = ({
                 </div>
               )}
             </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setToolbarMenu((value) => (value === 'align' ? null : 'align'))}
+                className={`${toolbarButtonClass} ${toolbarMenu === 'align' ? 'bg-slate-100 text-slate-950' : ''}`}
+                title="Alineacion"
+              >
+                <AlignLeft size={19} />
+                <span className="text-xs text-slate-400">⌄</span>
+              </button>
+              {toolbarMenu === 'align' && (
+                <div className="absolute left-0 top-12 flex rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                  {alignOptions.map((item) => (
+                    <button
+                      key={item.title}
+                      type="button"
+                      onClick={() => {
+                        applyRichTextCommand(item.command);
+                        setToolbarMenu(null);
+                      }}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                      title={item.title}
+                    >
+                      <item.icon size={19} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => applyRichTextCommand('removeFormat')} className={toolbarButtonClass} title="Limpiar formato">
+              <Strikethrough size={19} />
+            </button>
+            <button type="button" onClick={() => applyRichTextCommand('createLink', window.prompt('Pega el enlace') || '')} className={toolbarButtonClass} title="Enlace">
+              <Link size={19} />
+            </button>
+            <div className="mx-1 h-6 w-px bg-slate-200" />
+            <button type="button" className={toolbarButtonClass} title="AI">
+              <Sparkles size={17} />
+              <span className="text-sm font-semibold">AI</span>
+              <span className="text-xs text-slate-400">⌄</span>
+            </button>
+            <div className="mx-1 h-6 w-px bg-slate-200" />
+            <button type="button" className={toolbarButtonClass} title="Comentar">
+              <MessageSquarePlus size={18} />
+              <span className="text-sm font-semibold">Comment</span>
+            </button>
           </div>
         )}
 
@@ -690,22 +904,36 @@ export const BlockWrapper = ({
         )}
 
         {block.type !== 'image' && !isViewBlock && block.type !== 'code' && (
-          <div
-            ref={richTextRef}
-            className={`rich-text-editor min-h-[20px] w-full whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
-            contentEditable={!readOnly}
-            suppressContentEditableWarning
-            data-placeholder={placeholders[block.type]}
-            onInput={(event) => {
-              if (!readOnly) onUpdate(event.currentTarget.innerHTML);
-            }}
-            onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
-            onPaste={readOnly ? undefined : handleRichTextPaste}
-            onFocus={onFocus}
-            onMouseUp={updateToolbarPosition}
-            onKeyUp={updateToolbarPosition}
-            onBlur={() => setToolbarPosition(null)}
-          />
+          isCollapsed ? (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className={`flex min-h-[28px] w-full items-center gap-2 rounded-md bg-slate-50 px-2 py-1 text-left text-slate-700 hover:bg-slate-100 ${typeStyles[block.type]}`}
+              title="Expandir contenido"
+            >
+              <ChevronRight size={16} className="shrink-0 text-slate-400" />
+              <span className="truncate">
+                {getPlainTextFromHtml(block.content) || placeholders[block.type]}
+              </span>
+            </button>
+          ) : (
+            <div
+              ref={richTextRef}
+              className={`rich-text-editor min-h-[20px] w-full whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
+              contentEditable={!readOnly}
+              suppressContentEditableWarning
+              data-placeholder={placeholders[block.type]}
+              onInput={(event) => {
+                if (!readOnly) onUpdate(event.currentTarget.innerHTML);
+              }}
+              onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
+              onPaste={readOnly ? undefined : handleRichTextPaste}
+              onFocus={onFocus}
+              onMouseUp={updateToolbarPosition}
+              onKeyUp={updateToolbarPosition}
+              onBlur={() => setToolbarPosition(null)}
+            />
+          )
         )}
       </div>
     </div>

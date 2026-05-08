@@ -39,7 +39,7 @@ interface TypeGroup {
 type SubmenuId = 'styles' | 'insert';
 
 interface MainAction {
-  id: SubmenuId | 'return' | 'copy';
+  id: SubmenuId | 'collapse' | 'return' | 'copy';
   label: string;
   icon: LucideIcon;
   hasSubmenu: boolean;
@@ -47,10 +47,14 @@ interface MainAction {
 
 export const BlockTypeSelector = ({
   currentType,
+  isCollapsed = false,
   onSelect,
+  onToggleCollapse,
 }: {
   currentType: Block['type'];
+  isCollapsed?: boolean;
   onSelect: (type: Block['type']) => void;
+  onToggleCollapse?: () => void;
 }) => {
   const [activeSubmenu, setActiveSubmenu] = useState<SubmenuId | null>('styles');
 
@@ -95,6 +99,12 @@ export const BlockTypeSelector = ({
   const mainActions: MainAction[] = [
     { id: 'styles', label: 'Estilo de bloque', icon: Type, hasSubmenu: true },
     { id: 'insert', label: 'Insertar linea', icon: Plus, hasSubmenu: true },
+    {
+      id: 'collapse',
+      label: isCollapsed ? 'Expandir contenido' : 'Collapse content',
+      icon: ChevronRightSquare,
+      hasSubmenu: false,
+    },
     { id: 'return', label: 'Volver al bloque', icon: Undo2, hasSubmenu: false },
     { id: 'copy', label: 'Copiar enlace', icon: Link, hasSubmenu: false },
   ];
@@ -111,8 +121,12 @@ export const BlockTypeSelector = ({
           <button
             key={action.id}
             type="button"
+            onClick={() => {
+              if (action.id === 'collapse') onToggleCollapse?.();
+            }}
             onMouseEnter={() => {
               if (action.hasSubmenu) setActiveSubmenu(action.id as SubmenuId);
+              else setActiveSubmenu(null);
             }}
             className={`group flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors ${
               activeSubmenu === action.id

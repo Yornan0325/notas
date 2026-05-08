@@ -104,6 +104,7 @@ export const Canvas = ({
     updateImageLayout,
     moveBlock,
     changeBlockType,
+    toggleBlockCollapsed,
     updatePageTitle,
     removeBlock,
   } = useCodaStore();
@@ -452,6 +453,7 @@ export const Canvas = ({
       onAddViewBelow={(type) => addViewBlockBelow(type, block.id)}
       onUpdate={(val, e) => handleTextChange(block.id, val, e)}
       onChangeType={(type) => changeBlockTypeWithDefaults(block.id, type)}
+      onToggleCollapse={() => toggleBlockCollapsed(block.id)}
       onKeyDown={(e) => handleKeyDown(e, block.id)}
       onFocus={() => setActiveBlockId(block.id)}
       readOnly={readOnly}

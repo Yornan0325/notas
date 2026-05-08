@@ -28,6 +28,7 @@ export interface Block {
   blockOrder?: number;
   createdAt?: string;
   updatedAt?: string;
+  isCollapsed?: boolean;
   attachmentPath?: string;
   attachmentName?: string;
   imageWidth?: number;
