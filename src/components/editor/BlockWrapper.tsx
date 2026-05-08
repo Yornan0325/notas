@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type {
   ChangeEvent,
+  ClipboardEvent,
   DragEvent,
   KeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -97,6 +98,29 @@ const placeholders: Record<Block['type'], string> = {
   view_timeline: 'Timeline',
   view_chart: 'Chart',
   view_board: 'Board',
+};
+
+const sanitizePastedHtml = (html: string) => {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const blockedTags = ['script', 'style', 'meta', 'link', 'iframe', 'object', 'embed'];
+
+  blockedTags.forEach((tag) => {
+    parsed.querySelectorAll(tag).forEach((node) => node.remove());
+  });
+
+  parsed.body.querySelectorAll('*').forEach((element) => {
+    Array.from(element.attributes).forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim().toLowerCase();
+
+      if (name.startsWith('on')) element.removeAttribute(attribute.name);
+      if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
+        element.removeAttribute(attribute.name);
+      }
+    });
+  });
+
+  return parsed.body.innerHTML;
 };
 
 export const BlockWrapper = ({
@@ -247,6 +271,16 @@ export const BlockWrapper = ({
     updateToolbarPosition();
   };
 
+  const insertRichHtml = (html: string) => {
+    const editor = richTextRef.current;
+    if (!editor) return;
+
+    editor.focus();
+    document.execCommand('insertHTML', false, sanitizePastedHtml(html));
+    onUpdate(editor.innerHTML);
+    setToolbarPosition(null);
+  };
+
   const insertRichTextLineBreak = () => {
     const editor = richTextRef.current;
     if (!editor) return;
@@ -265,6 +299,14 @@ export const BlockWrapper = ({
     }
 
     onKeyDown(event);
+  };
+
+  const handleRichTextPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    const html = event.clipboardData.getData('text/html');
+    if (!html) return;
+
+    event.preventDefault();
+    insertRichHtml(html);
   };
 
   const textColorOptions = ['#111827', '#dc2626', '#ea580c', '#16a34a', '#2563eb', '#7c3aed', '#be185d', '#6b7280'];
@@ -650,7 +692,7 @@ export const BlockWrapper = ({
         {block.type !== 'image' && !isViewBlock && block.type !== 'code' && (
           <div
             ref={richTextRef}
-            className={`min-h-[20px] w-full whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
+            className={`rich-text-editor min-h-[20px] w-full whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
             contentEditable={!readOnly}
             suppressContentEditableWarning
             data-placeholder={placeholders[block.type]}
@@ -658,6 +700,7 @@ export const BlockWrapper = ({
               if (!readOnly) onUpdate(event.currentTarget.innerHTML);
             }}
             onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
+            onPaste={readOnly ? undefined : handleRichTextPaste}
             onFocus={onFocus}
             onMouseUp={updateToolbarPosition}
             onKeyUp={updateToolbarPosition}

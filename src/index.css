@@ -11,3 +11,75 @@ textarea {
 textarea::-webkit-scrollbar {
   display: none;
 }
+
+.rich-text-editor a {
+  color: #1d4ed8;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.rich-text-editor blockquote {
+  border-left: 4px solid #cbd5e1;
+  padding-left: 1rem;
+}
+
+.rich-text-editor code {
+  border-radius: 0.25rem;
+  background: #f1f5f9;
+  padding: 0.1rem 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+}
+
+.rich-text-editor pre {
+  overflow-x: auto;
+  border-radius: 0.375rem;
+  background: #f1f5f9;
+  padding: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.rich-text-editor ul,
+.rich-text-editor ol {
+  margin: 0.25rem 0;
+  padding-left: 1.35em;
+  list-style-position: outside;
+}
+
+.rich-text-editor ul {
+  list-style-type: disc;
+}
+
+.rich-text-editor ol {
+  list-style-type: decimal;
+}
+
+.rich-text-editor li {
+  padding-left: 0.15em;
+}
+
+.rich-text-editor li::marker {
+  color: #64748b;
+}
+
+.rich-text-editor li > p {
+  margin: 0;
+}
+
+.rich-text-editor table {
+  margin: 0.75rem 0;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.rich-text-editor th,
+.rich-text-editor td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.75rem;
+}
+
+.rich-text-editor th {
+  background: #f8fafc;
+  font-weight: 600;
+}
