@@ -247,6 +247,26 @@ export const BlockWrapper = ({
     updateToolbarPosition();
   };
 
+  const insertRichTextLineBreak = () => {
+    const editor = richTextRef.current;
+    if (!editor) return;
+
+    editor.focus();
+    document.execCommand('insertHTML', false, '<br>');
+    onUpdate(editor.innerHTML);
+    setToolbarPosition(null);
+  };
+
+  const handleRichTextKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      insertRichTextLineBreak();
+      return;
+    }
+
+    onKeyDown(event);
+  };
+
   const textColorOptions = ['#111827', '#dc2626', '#ea580c', '#16a34a', '#2563eb', '#7c3aed', '#be185d', '#6b7280'];
   const highlightColorOptions = ['#fecaca', '#fed7aa', '#fef3c7', '#bbf7d0', '#bfdbfe', '#e9d5ff', '#fbcfe8', '#e5e7eb'];
 
@@ -338,9 +358,9 @@ export const BlockWrapper = ({
           >
             <button
               type="button"
-              onClick={() => onChangeType('text')}
+              onClick={() => applyRichTextCommand('removeFormat')}
               className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100"
-              title="Texto"
+              title="Texto normal"
             >
               <span className="text-lg font-semibold">T</span>
             </button>
@@ -630,14 +650,14 @@ export const BlockWrapper = ({
         {block.type !== 'image' && !isViewBlock && block.type !== 'code' && (
           <div
             ref={richTextRef}
-            className={`min-h-[34px] w-full bg-transparent py-1 leading-relaxed transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
+            className={`min-h-[20px] w-full whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
             contentEditable={!readOnly}
             suppressContentEditableWarning
             data-placeholder={placeholders[block.type]}
             onInput={(event) => {
               if (!readOnly) onUpdate(event.currentTarget.innerHTML);
             }}
-            onKeyDown={readOnly ? undefined : onKeyDown}
+            onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
             onFocus={onFocus}
             onMouseUp={updateToolbarPosition}
             onKeyUp={updateToolbarPosition}
