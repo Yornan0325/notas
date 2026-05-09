@@ -604,7 +604,7 @@ export const Canvas = ({
         <aside className="fixed right-4 top-24 z-30 hidden w-56 rounded-lg border border-amber-200 bg-white/95 p-2 shadow-lg shadow-amber-100/70 backdrop-blur md:block">
           <div className="mb-2 flex items-center gap-2 px-1.5">
             <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Favoritos</p>
             </div>
           </div>
@@ -620,7 +620,7 @@ export const Canvas = ({
                   className="group flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-amber-50 hover:text-slate-950"
                   title={text}
                 >
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 group-hover:shadow-[0_0_0_3px_rgba(251,191,36,0.18)]" />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
                   <span className="min-w-0 overflow-hidden text-ellipsis font-medium leading-snug [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
                     {text}
                   </span>
@@ -633,11 +633,10 @@ export const Canvas = ({
         <button
           type="button"
           onClick={() => setIsFavoritePanelOpen(true)}
-          className="fixed bottom-4 right-4 z-30 inline-flex h-11 items-center gap-2 rounded-full border border-amber-200 bg-white/95 px-3 text-xs font-bold uppercase tracking-wide text-amber-700 shadow-lg shadow-amber-100/70 backdrop-blur md:hidden"
+          className="fixed bottom-4 right-4 z-30 inline-flex h-10 items-center gap-2 rounded-full border border-amber-200 bg-white/95 px-3 text-xs font-bold text-amber-700 shadow-lg shadow-amber-100/70 backdrop-blur md:hidden"
           aria-label="Abrir favoritos"
         >
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]" />
-          Favoritos
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] leading-none">
             {favoriteTextBlocks.length}
           </span>
@@ -654,7 +653,7 @@ export const Canvas = ({
             <aside className="absolute inset-x-3 bottom-3 max-h-[46vh] rounded-xl border border-amber-200 bg-white p-3 shadow-2xl shadow-amber-100/80">
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
                   <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Favoritos</p>
                 </div>
                 <button
