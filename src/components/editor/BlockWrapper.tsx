@@ -442,7 +442,7 @@ export const BlockWrapper = ({
     <div
       id={`block-${block.id}`}
       data-editor-block="true"
-      className={`group relative flex items-start gap-1 rounded-md py-1 pl-0 transition-colors hover:bg-slate-50 md:-ml-14 md:gap-2 md:pl-14 ${blockShell}`}
+      className={`group relative flex items-start gap-2 rounded-md py-1 pl-10 transition-colors hover:bg-slate-50 md:-ml-14 md:pl-14 ${blockShell}`}
       onMouseLeave={() => setShowSelector(false)}
       onDragOver={readOnly ? undefined : onImageDragOver}
       onDrop={readOnly ? undefined : onImageDrop}
@@ -457,24 +457,24 @@ export const BlockWrapper = ({
         <div className="absolute inset-y-2 right-1 w-1 rounded bg-slate-950" />
       )}
       {!readOnly && (
-        <div className="absolute -left-7 top-1 z-20 flex flex-col items-center gap-0.5 opacity-100 transition-opacity md:left-2 md:top-2 md:flex-row md:opacity-0 md:group-hover:opacity-100">
+        <div className="absolute left-1 top-1 z-20 flex flex-col items-center gap-1 opacity-100 transition-opacity md:left-2 md:top-2 md:flex-row md:gap-0.5 md:opacity-0 md:group-hover:opacity-100">
         <button
           type="button"
           onClick={() => setShowSelector(!showSelector)}
-          className="rounded p-0.5 text-slate-400 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm md:cursor-grab md:p-1 md:text-slate-300"
+          className="flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm md:h-6 md:w-6 md:cursor-grab md:text-slate-300"
           title="Cambiar tipo de bloque"
         >
-          <GripVertical size={14} className="md:h-4 md:w-4" />
+          <GripVertical size={16} />
         </button>
         {canFavorite && (
           <button
             type="button"
             onClick={onToggleFavorite}
-            className="flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-amber-500 hover:shadow-sm md:h-6 md:w-6 md:text-slate-300"
+            className="flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-amber-500 hover:shadow-sm md:h-6 md:w-6 md:text-slate-300"
             title={block.isFavorite ? 'Quitar punto favorito' : 'Marcar punto favorito'}
           >
             <span
-              className={`h-2.5 w-2.5 rounded-full transition-all ${
+              className={`h-3 w-3 rounded-full transition-all md:h-2.5 md:w-2.5 ${
                 block.isFavorite
                   ? 'bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]'
                   : 'border border-slate-300 bg-white'
@@ -489,10 +489,10 @@ export const BlockWrapper = ({
         <button
           type="button"
           onClick={readOnly ? undefined : onToggleFavorite}
-          className="absolute left-7 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-amber-50 text-amber-500 ring-1 ring-amber-200 md:left-8"
+          className="absolute left-2 top-9 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-amber-50 text-amber-500 ring-1 ring-amber-200 md:left-8 md:top-1/2 md:h-5 md:w-5 md:-translate-y-1/2"
           title="Punto favorito"
         >
-          <span className="h-2 w-2 rounded-full bg-amber-400" />
+          <span className="h-3 w-3 rounded-full bg-amber-400 md:h-2 md:w-2" />
         </button>
       )}
 
@@ -532,7 +532,7 @@ export const BlockWrapper = ({
         </div>
       )}
 
-      <div className="flex min-w-4 justify-center pt-2.5 text-slate-400 md:min-w-[28px]">
+      <div className="flex min-w-[22px] justify-center pt-2.5 text-slate-400 md:min-w-[28px]">
         {block.type === 'todo' && (
           <button
             type="button"

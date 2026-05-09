@@ -550,7 +550,7 @@ export const Canvas = ({
     <div
       ref={canvasRef}
       data-editor-canvas="true"
-      className="relative mx-auto min-h-screen max-w-4xl flex-1 px-8 py-10 md:px-12 md:py-12"
+      className="relative mx-auto min-h-screen max-w-4xl flex-1 px-4 py-10 md:px-12 md:py-12"
       onMouseDown={handleCanvasMouseDown}
       onPaste={readOnly ? undefined : handleCanvasPaste}
       tabIndex={-1}
