@@ -19,6 +19,7 @@ import {
   Megaphone,
   Plus,
   Quote,
+  Trash2,
   Type,
   Undo2,
 } from 'lucide-react';
@@ -39,7 +40,7 @@ interface TypeGroup {
 type SubmenuId = 'styles' | 'insert';
 
 interface MainAction {
-  id: SubmenuId | 'collapse' | 'return' | 'copy';
+  id: SubmenuId | 'collapse' | 'return' | 'copy' | 'delete';
   label: string;
   icon: LucideIcon;
   hasSubmenu: boolean;
@@ -50,11 +51,21 @@ export const BlockTypeSelector = ({
   isCollapsed = false,
   onSelect,
   onToggleCollapse,
+  onInsertAbove,
+  onInsertBelow,
+  onConvertToText,
+  onCopyLink,
+  onDelete,
 }: {
   currentType: Block['type'];
   isCollapsed?: boolean;
   onSelect: (type: Block['type']) => void;
   onToggleCollapse?: () => void;
+  onInsertAbove?: () => void;
+  onInsertBelow?: () => void;
+  onConvertToText?: () => void;
+  onCopyLink?: () => void;
+  onDelete?: () => void;
 }) => {
   const [activeSubmenu, setActiveSubmenu] = useState<SubmenuId | null>('styles');
 
@@ -101,17 +112,18 @@ export const BlockTypeSelector = ({
     { id: 'insert', label: 'Insertar linea', icon: Plus, hasSubmenu: true },
     {
       id: 'collapse',
-      label: isCollapsed ? 'Expandir contenido' : 'Collapse content',
+      label: isCollapsed ? 'Expandir contenido' : 'Colapsar contenido',
       icon: ChevronRightSquare,
       hasSubmenu: false,
     },
-    { id: 'return', label: 'Volver al bloque', icon: Undo2, hasSubmenu: false },
+    { id: 'return', label: 'Convertir a texto', icon: Undo2, hasSubmenu: false },
     { id: 'copy', label: 'Copiar enlace', icon: Link, hasSubmenu: false },
+    { id: 'delete', label: 'Eliminar bloque', icon: Trash2, hasSubmenu: false },
   ];
 
   const insertOptions = [
-    { label: 'Insertar arriba', icon: ArrowUp, shortcut: 'Ctrl Alt ↑' },
-    { label: 'Insertar abajo', icon: ArrowDown, shortcut: 'Ctrl Alt ↓' },
+    { label: 'Insertar arriba', icon: ArrowUp, shortcut: 'Ctrl Alt Up', onClick: onInsertAbove },
+    { label: 'Insertar abajo', icon: ArrowDown, shortcut: 'Ctrl Alt Down', onClick: onInsertBelow },
   ];
 
   return (
@@ -123,21 +135,32 @@ export const BlockTypeSelector = ({
             type="button"
             onClick={() => {
               if (action.id === 'collapse') onToggleCollapse?.();
+              if (action.id === 'return') onConvertToText?.();
+              if (action.id === 'copy') onCopyLink?.();
+              if (action.id === 'delete') onDelete?.();
             }}
             onMouseEnter={() => {
               if (action.hasSubmenu) setActiveSubmenu(action.id as SubmenuId);
               else setActiveSubmenu(null);
             }}
             className={`group flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors ${
-              activeSubmenu === action.id
-                ? 'bg-slate-100 text-slate-950'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+              action.id === 'delete'
+                ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                : activeSubmenu === action.id
+                  ? 'bg-slate-100 text-slate-950'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
             }`}
           >
             <action.icon
               size={18}
               strokeWidth={2.5}
-              className={activeSubmenu === action.id ? 'text-slate-950' : 'text-slate-400 group-hover:text-slate-700'}
+              className={
+                action.id === 'delete'
+                  ? 'text-red-500'
+                  : activeSubmenu === action.id
+                    ? 'text-slate-950'
+                    : 'text-slate-400 group-hover:text-slate-700'
+              }
             />
             <span className="flex-1 text-left font-medium">{action.label}</span>
             {action.hasSubmenu && <ChevronRight size={14} className="text-slate-400" />}
@@ -178,6 +201,7 @@ export const BlockTypeSelector = ({
             <button
               key={option.label}
               type="button"
+              onClick={option.onClick}
               className="group flex w-full items-center gap-3 rounded-sm px-3 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
             >
               <option.icon size={18} strokeWidth={2.5} className="text-slate-400 group-hover:text-slate-700" />

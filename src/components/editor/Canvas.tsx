@@ -173,6 +173,17 @@ export const Canvas = ({
     return newId;
   };
 
+  const focusNewBlockAbove = (blockId: string) => {
+    if (readOnly) return '';
+
+    const currentIndex = pageBlocks.findIndex((block) => block.id === blockId);
+    if (currentIndex <= 0) {
+      return focusNewBlockAtStart('text');
+    }
+
+    return focusNewBlock('text', pageBlocks[currentIndex - 1].id);
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLElement>, blockId: string) => {
     const currentBlock = pageBlocks.find((block) => block.id === blockId);
     const currentIndex = pageBlocks.findIndex((block) => block.id === blockId);
@@ -442,8 +453,14 @@ export const Canvas = ({
       index={index}
       isFocused={activeBlockId === block.id}
       dragPlacement={dragState?.targetId === block.id ? dragState.placement : null}
+      onAddAbove={() => focusNewBlockAbove(block.id)}
       onAddBelow={() => focusNewBlock('text', block.id)}
-      onRemove={() => removeBlock(block.id)}
+      onRemove={() => {
+        const currentIndex = pageBlocks.findIndex((item) => item.id === block.id);
+        const nextFocus = pageBlocks[currentIndex + 1]?.id || pageBlocks[currentIndex - 1]?.id || null;
+        removeBlock(block.id);
+        setActiveBlockId(nextFocus);
+      }}
       onImageDragStart={() => setDragState({ blockId: block.id, targetId: null, placement: 'after' })}
       onImageDragEnd={() => setDragState(null)}
       onImageDragOver={(event) => handleImageDragOver(event, block)}

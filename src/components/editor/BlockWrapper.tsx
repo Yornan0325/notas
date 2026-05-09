@@ -49,6 +49,7 @@ interface BlockWrapperProps {
   index: number;
   isFocused: boolean;
   dragPlacement: 'before' | 'after' | 'beside' | null;
+  onAddAbove: () => void;
   onAddBelow: () => void;
   onRemove: () => void;
   onImageDragStart: () => void;
@@ -115,10 +116,10 @@ const placeholders: Record<Block['type'], string> = {
 };
 
 const textStyleOptions = [
-  { title: 'Texto', icon: Type, command: 'formatBlock', value: 'div' },
-  { title: 'Titulo 1', icon: Heading1, command: 'formatBlock', value: 'h1' },
-  { title: 'Titulo 2', icon: Heading2, command: 'formatBlock', value: 'h2' },
-  { title: 'Titulo 3', icon: Heading3, command: 'formatBlock', value: 'h3' },
+  { title: 'Texto', icon: Type, command: 'formatBlock', value: '<div>' },
+  { title: 'Titulo 1', icon: Heading1, command: 'formatBlock', value: '<h1>' },
+  { title: 'Titulo 2', icon: Heading2, command: 'formatBlock', value: '<h2>' },
+  { title: 'Titulo 3', icon: Heading3, command: 'formatBlock', value: '<h3>' },
 ];
 
 const listStyleOptions = [
@@ -190,6 +191,7 @@ export const BlockWrapper = ({
   index,
   isFocused,
   dragPlacement,
+  onAddAbove,
   onAddBelow,
   onRemove,
   onImageDragStart,
@@ -408,6 +410,7 @@ export const BlockWrapper = ({
 
   return (
     <div
+      id={`block-${block.id}`}
       className={`group relative -ml-14 flex items-start gap-2 rounded-md py-1 pl-14 transition-colors hover:bg-slate-50 focus-within:bg-slate-50 ${blockShell}`}
       onMouseLeave={() => setShowSelector(false)}
       onDragOver={readOnly ? undefined : onImageDragOver}
@@ -454,6 +457,26 @@ export const BlockWrapper = ({
             }}
             onToggleCollapse={() => {
               if (canCollapse) onToggleCollapse();
+              setShowSelector(false);
+            }}
+            onInsertAbove={() => {
+              onAddAbove();
+              setShowSelector(false);
+            }}
+            onInsertBelow={() => {
+              onAddBelow();
+              setShowSelector(false);
+            }}
+            onConvertToText={() => {
+              onChangeType('text');
+              setShowSelector(false);
+            }}
+            onCopyLink={() => {
+              navigator.clipboard?.writeText(`${window.location.href.split('#')[0]}#block-${block.id}`);
+              setShowSelector(false);
+            }}
+            onDelete={() => {
+              onRemove();
               setShowSelector(false);
             }}
           />
