@@ -12,6 +12,9 @@ import { ShareDialog } from '../sharing/ShareDialog';
 import { PageIconPicker } from '../EditorPage/PageIconPicker';
 import type { Page } from '../type/typeScript';
 
+// se agreagamos los favoritos a la barra lateral CD
+
+
 export const DocCard = ({ doc, readOnly = false }: { doc: Page; readOnly?: boolean }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
