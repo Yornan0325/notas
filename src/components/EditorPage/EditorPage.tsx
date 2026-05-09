@@ -17,7 +17,9 @@ const EditorPage = () => {
   const { loading, user } = useSyncContext();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
   const initializedDocIdRef = useRef<string | null>(null);
   const requestedPageId = searchParams.get('page');
 
@@ -85,6 +87,7 @@ const EditorPage = () => {
         activePageId={visibleActivePageId}
         onSelectPage={(id) => setActivePageId(id)}
         isCollapsed={isSidebarCollapsed}
+        onClose={() => setIsSidebarCollapsed(true)}
         readOnly={isSharedReadOnly}
       />
 

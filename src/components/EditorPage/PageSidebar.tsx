@@ -35,12 +35,14 @@ export const PageSidebar = ({
   activePageId,
   onSelectPage,
   isCollapsed = false,
+  onClose,
   readOnly = false,
 }: {
   docId: string;
   activePageId: string | null;
   onSelectPage: (id: string) => void;
   isCollapsed?: boolean;
+  onClose?: () => void;
   readOnly?: boolean;
 }) => {
   const { pages, addPage } = useCodaStore();
@@ -56,13 +58,31 @@ export const PageSidebar = ({
 
   const createPage = () => {
     if (readOnly) return;
-    onSelectPage(addPage(docId));
+    handleSelectPage(addPage(docId));
+  };
+
+  const closeOnMobile = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      onClose?.();
+    }
+  };
+
+  const handleSelectPage = (id: string) => {
+    onSelectPage(id);
+    closeOnMobile();
   };
 
   if (isCollapsed) return null;
 
   return (
-    <aside className="hidden h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+    <>
+    <button
+      type="button"
+      className="fixed inset-0 z-40 bg-slate-950/30 md:hidden"
+      aria-label="Cerrar paginas"
+      onClick={onClose}
+    />
+    <aside className="fixed inset-y-0 left-0 z-50 flex h-full w-[min(20rem,88vw)] shrink-0 flex-col border-r border-slate-200 bg-white shadow-xl md:static md:z-auto md:w-72 md:shadow-none">
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
@@ -70,6 +90,7 @@ export const PageSidebar = ({
               to="/"
               className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
               aria-label="Volver al workspace"
+              onClick={closeOnMobile}
             >
               <ArrowLeft size={16} className="shrink-0" />
               <span className="leading-none">Puesto de trabajo</span>
@@ -98,7 +119,7 @@ export const PageSidebar = ({
                 key={page.id}
                 page={page}
                 activePageId={activePageId}
-                onSelectPage={onSelectPage}
+                onSelectPage={handleSelectPage}
                 readOnly={readOnly}
               />
             ))}
@@ -118,6 +139,7 @@ export const PageSidebar = ({
         )}
       </div>
     </aside>
+    </>
   );
 };
 

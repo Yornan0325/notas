@@ -4,14 +4,14 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
-export const TopBar = () => {
+export const TopBar = ({ onOpenSidebar }: { onOpenSidebar?: () => void }) => {
   const isOnline = navigator.onLine;
   const location = useLocation();
   const isDocView = location.pathname.includes('/doc/');
 
   return (
     <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-6">
-      <Button variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menu">
+      <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenSidebar} aria-label="Abrir menu">
         <Menu size={18} />
       </Button>
 

@@ -10,7 +10,15 @@ import { DropdownMenuContent, DropdownMenuItem } from '../ui/DropdownMenu';
 import { Separator } from '../ui/Separator';
 import { WorkspaceNav } from './WorkspaceNav';
 
-export const Sidebar = ({ mode }: { mode: string }) => {
+export const Sidebar = ({
+  mode,
+  isMobileOpen = false,
+  onMobileClose,
+}: {
+  mode: string;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
+}) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useSyncContext();
@@ -50,11 +58,8 @@ export const Sidebar = ({ mode }: { mode: string }) => {
     }
   };
 
-  return (
-    <aside
-      data-mode={mode}
-      className="hidden h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-3 text-slate-700 md:flex"
-    >
+  const sidebarContent = (
+    <>
       <WorkspaceNav />
       <Separator className="my-3" />
 
@@ -66,6 +71,7 @@ export const Sidebar = ({ mode }: { mode: string }) => {
             <Link
               key={item.label}
               to={item.path}
+              onClick={onMobileClose}
               className={cn(
                 'flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors hover:bg-slate-100 hover:text-slate-950',
                 isActive ? 'bg-slate-100 text-slate-950' : 'text-slate-600'
@@ -112,6 +118,29 @@ export const Sidebar = ({ mode }: { mode: string }) => {
           </button>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {isMobileOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/30 md:hidden"
+          aria-label="Cerrar menu"
+          onClick={onMobileClose}
+        />
+      )}
+
+      <aside
+        data-mode={mode}
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white p-3 text-slate-700 shadow-xl transition-transform duration-200 md:static md:z-auto md:w-64 md:translate-x-0 md:shadow-none',
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        )}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 };

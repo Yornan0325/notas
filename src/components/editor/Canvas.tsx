@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent } from 'react';
+import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import toast from 'react-hot-toast';
 import { useCodaStore } from '../../store/useCodaStore';
 import { BlockWrapper } from './BlockWrapper';
@@ -80,6 +80,9 @@ const getBlockPlainText = (content: string) => {
   element.innerHTML = content;
   return element.textContent?.trim() || '';
 };
+
+const isTextEntryBlock = (type: Block['type']) =>
+  !isViewBlockType(type) && type !== 'image' && type !== 'divider';
 
 export const Canvas = ({
   pageId,
@@ -173,15 +176,49 @@ export const Canvas = ({
     return newId;
   };
 
-  const focusNewBlockAbove = (blockId: string) => {
+  const insertDividerAbove = (blockId: string) => {
     if (readOnly) return '';
 
     const currentIndex = pageBlocks.findIndex((block) => block.id === blockId);
     if (currentIndex <= 0) {
-      return focusNewBlockAtStart('text');
+      return focusNewBlockAtStart('divider');
     }
 
-    return focusNewBlock('text', pageBlocks[currentIndex - 1].id);
+    return focusNewBlock('divider', pageBlocks[currentIndex - 1].id);
+  };
+
+  const insertDividerBelow = (blockId: string) => {
+    if (readOnly) return '';
+    return focusNewBlock('divider', blockId);
+  };
+
+  const focusTextEntryFromCanvasClick = () => {
+    if (readOnly) return;
+
+    const lastBlock = pageBlocks[pageBlocks.length - 1];
+    if (!lastBlock) {
+      focusNewBlock('text');
+      return;
+    }
+
+    if (isTextEntryBlock(lastBlock.type) && getBlockPlainText(lastBlock.content) === '') {
+      setActiveBlockId(lastBlock.id);
+      return;
+    }
+
+    focusNewBlock('text', lastBlock.id);
+  };
+
+  const handleCanvasMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (readOnly || event.button !== 0) return;
+
+    const target = event.target as HTMLElement;
+    const isExistingEditorTarget = target.closest(
+      '[data-editor-block="true"], button, input, textarea, a, [contenteditable="true"]'
+    );
+
+    if (isExistingEditorTarget) return;
+    focusTextEntryFromCanvasClick();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLElement>, blockId: string) => {
@@ -205,12 +242,14 @@ export const Canvas = ({
       return;
     }
 
-    if (e.key === 'ArrowUp' && currentIndex > 0) {
+    const currentBlockIsEmpty = currentBlock && getBlockPlainText(currentBlock.content) === '';
+
+    if (e.key === 'ArrowUp' && currentIndex > 0 && currentBlockIsEmpty) {
       e.preventDefault();
       setActiveBlockId(pageBlocks[currentIndex - 1].id);
     }
 
-    if (e.key === 'ArrowDown' && currentIndex < pageBlocks.length - 1) {
+    if (e.key === 'ArrowDown' && currentIndex < pageBlocks.length - 1 && currentBlockIsEmpty) {
       e.preventDefault();
       setActiveBlockId(pageBlocks[currentIndex + 1].id);
     }
@@ -453,8 +492,8 @@ export const Canvas = ({
       index={index}
       isFocused={activeBlockId === block.id}
       dragPlacement={dragState?.targetId === block.id ? dragState.placement : null}
-      onAddAbove={() => focusNewBlockAbove(block.id)}
-      onAddBelow={() => focusNewBlock('text', block.id)}
+      onInsertDividerAbove={() => insertDividerAbove(block.id)}
+      onInsertDividerBelow={() => insertDividerBelow(block.id)}
       onRemove={() => {
         const currentIndex = pageBlocks.findIndex((item) => item.id === block.id);
         const nextFocus = pageBlocks[currentIndex + 1]?.id || pageBlocks[currentIndex - 1]?.id || null;
@@ -469,6 +508,8 @@ export const Canvas = ({
       onUpdateImageLayout={(layout) => updateImageLayout(block.id, layout)}
       onAddViewBelow={(type) => addViewBlockBelow(type, block.id)}
       onUpdate={(val, e) => handleTextChange(block.id, val, e)}
+      onOpenSlashMenu={(position) => setSlashMenu({ ...position, blockId: block.id })}
+      onCloseSlashMenu={() => setSlashMenu(null)}
       onChangeType={(type) => changeBlockTypeWithDefaults(block.id, type)}
       onToggleCollapse={() => toggleBlockCollapsed(block.id)}
       onKeyDown={(e) => handleKeyDown(e, block.id)}
@@ -480,7 +521,9 @@ export const Canvas = ({
   return (
     <div
       ref={canvasRef}
+      data-editor-canvas="true"
       className="relative mx-auto min-h-screen max-w-4xl flex-1 px-6 py-12 md:px-12"
+      onMouseDown={handleCanvasMouseDown}
       onPaste={readOnly ? undefined : handleCanvasPaste}
       tabIndex={-1}
     >

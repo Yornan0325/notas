@@ -25,6 +25,22 @@ textarea::-webkit-scrollbar {
   display: none;
 }
 
+[data-editor-canvas="true"],
+[data-editor-canvas="true"]:focus,
+[data-editor-canvas="true"]:focus-visible,
+[data-editor-block="true"],
+[data-editor-block="true"]:focus,
+[data-editor-block="true"]:focus-visible,
+.rich-text-editor,
+.rich-text-editor:focus,
+.rich-text-editor:focus-visible,
+[contenteditable="true"],
+[contenteditable="true"]:focus,
+[contenteditable="true"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .rich-text-editor a {
   color: #1d4ed8;
   font-weight: 500;

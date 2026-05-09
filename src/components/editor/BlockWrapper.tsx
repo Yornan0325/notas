@@ -3,6 +3,7 @@ import type {
   ChangeEvent,
   ClipboardEvent,
   DragEvent,
+  FormEvent,
   KeyboardEvent,
   MouseEvent as ReactMouseEvent,
 } from 'react';
@@ -28,9 +29,9 @@ import {
   ListOrdered,
   Maximize2,
   Megaphone,
+  Minus,
   MessageSquarePlus,
   Palette,
-  Plus,
   Quote,
   Sparkles,
   Strikethrough,
@@ -49,8 +50,8 @@ interface BlockWrapperProps {
   index: number;
   isFocused: boolean;
   dragPlacement: 'before' | 'after' | 'beside' | null;
-  onAddAbove: () => void;
-  onAddBelow: () => void;
+  onInsertDividerAbove: () => void;
+  onInsertDividerBelow: () => void;
   onRemove: () => void;
   onImageDragStart: () => void;
   onImageDragEnd: () => void;
@@ -60,6 +61,8 @@ interface BlockWrapperProps {
   onUpdateImageLayout: (layout: Pick<Block, 'imageWidth' | 'imageAlign' | 'imageFlow'>) => void;
   onAddViewBelow: (type: ViewBlockType) => void;
   onUpdate: (content: string, e?: ChangeEvent<HTMLTextAreaElement>) => void;
+  onOpenSlashMenu: (position: { x: number; y: number }) => void;
+  onCloseSlashMenu: () => void;
   onChangeType: (type: Block['type']) => void;
   onToggleCollapse: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
@@ -80,6 +83,7 @@ const typeStyles: Record<Block['type'], string> = {
   quote: 'text-xl font-medium italic text-slate-700',
   code: 'font-mono text-sm leading-6 text-slate-800',
   callout: 'text-base font-medium text-slate-800',
+  divider: '',
   image: 'text-base font-normal text-slate-700',
   view_table: 'text-base font-normal text-slate-700',
   view_cards: 'text-base font-normal text-slate-700',
@@ -104,6 +108,7 @@ const placeholders: Record<Block['type'], string> = {
   quote: 'Cita o nota destacada',
   code: 'Codigo',
   callout: 'Aviso o contexto importante',
+  divider: '',
   image: 'Describe la imagen',
   view_table: 'Table',
   view_cards: 'Cards',
@@ -191,8 +196,8 @@ export const BlockWrapper = ({
   index,
   isFocused,
   dragPlacement,
-  onAddAbove,
-  onAddBelow,
+  onInsertDividerAbove,
+  onInsertDividerBelow,
   onRemove,
   onImageDragStart,
   onImageDragEnd,
@@ -202,6 +207,8 @@ export const BlockWrapper = ({
   onUpdateImageLayout,
   onAddViewBelow,
   onUpdate,
+  onOpenSlashMenu,
+  onCloseSlashMenu,
   onChangeType,
   onToggleCollapse,
   onKeyDown,
@@ -221,7 +228,7 @@ export const BlockWrapper = ({
   const imageAlign = block.imageAlign || 'center';
   const imageFlow = block.imageFlow || 'stack';
   const isViewBlock = isViewBlockType(block.type);
-  const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code';
+  const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code' && block.type !== 'divider';
   const isCollapsed = canCollapse && Boolean(block.isCollapsed);
 
   useEffect(() => {
@@ -251,6 +258,10 @@ export const BlockWrapper = ({
     if (!isFocused || !richTextRef.current) return;
 
     const editor = richTextRef.current;
+    if (editor.innerHTML !== block.content) {
+      editor.innerHTML = block.content;
+    }
+
     if (document.activeElement === editor) return;
     editor.focus();
 
@@ -261,7 +272,7 @@ export const BlockWrapper = ({
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
-  }, [isFocused]);
+  }, [block.content, isFocused]);
 
   const blockShell =
     block.type === 'code'
@@ -373,7 +384,7 @@ export const BlockWrapper = ({
   };
 
   const handleRichTextKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) {
+    if (event.key === 'Enter' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       insertRichTextLineBreak();
       return;
@@ -388,6 +399,20 @@ export const BlockWrapper = ({
 
     event.preventDefault();
     insertRichHtml(html);
+  };
+
+  const handleRichTextInput = (event: FormEvent<HTMLDivElement>) => {
+    if (readOnly) return;
+
+    const editor = event.currentTarget;
+    onUpdate(editor.innerHTML);
+
+    if (editor.textContent?.endsWith('/')) {
+      const rect = editor.getBoundingClientRect();
+      onOpenSlashMenu({ x: rect.left, y: rect.top + 34 });
+    } else {
+      onCloseSlashMenu();
+    }
   };
 
   const textColorOptions = ['#111827', '#dc2626', '#ea580c', '#16a34a', '#2563eb', '#7c3aed', '#be185d', '#6b7280'];
@@ -411,7 +436,8 @@ export const BlockWrapper = ({
   return (
     <div
       id={`block-${block.id}`}
-      className={`group relative -ml-14 flex items-start gap-2 rounded-md py-1 pl-14 transition-colors hover:bg-slate-50 focus-within:bg-slate-50 ${blockShell}`}
+      data-editor-block="true"
+      className={`group relative -ml-14 flex items-start gap-2 rounded-md py-1 pl-14 transition-colors hover:bg-slate-50 ${blockShell}`}
       onMouseLeave={() => setShowSelector(false)}
       onDragOver={readOnly ? undefined : onImageDragOver}
       onDrop={readOnly ? undefined : onImageDrop}
@@ -427,14 +453,6 @@ export const BlockWrapper = ({
       )}
       {!readOnly && (
         <div className="absolute left-2 top-2 z-20 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-        <button
-          type="button"
-          onClick={onAddBelow}
-          className="rounded p-1 text-slate-400 transition-colors hover:bg-white hover:text-slate-700 hover:shadow-sm"
-          title="Insertar bloque debajo"
-        >
-          <Plus size={16} />
-        </button>
         <button
           type="button"
           onClick={() => setShowSelector(!showSelector)}
@@ -457,14 +475,13 @@ export const BlockWrapper = ({
             }}
             onToggleCollapse={() => {
               if (canCollapse) onToggleCollapse();
-              setShowSelector(false);
             }}
             onInsertAbove={() => {
-              onAddAbove();
+              onInsertDividerAbove();
               setShowSelector(false);
             }}
             onInsertBelow={() => {
-              onAddBelow();
+              onInsertDividerBelow();
               setShowSelector(false);
             }}
             onConvertToText={() => {
@@ -501,6 +518,7 @@ export const BlockWrapper = ({
         )}
         {block.type === 'toggle_list' && <ChevronRight size={16} className="mt-0.5" />}
         {block.type === 'callout' && <Megaphone size={17} className="mt-0.5 text-amber-600" />}
+        {block.type === 'divider' && <Minus size={17} className="mt-0.5 text-slate-400" />}
         {block.type === 'image' && <Image size={17} className="mt-0.5 text-slate-500" />}
       </div>
 
@@ -752,6 +770,27 @@ export const BlockWrapper = ({
           />
         )}
 
+        {block.type === 'divider' && (
+          <button
+            type="button"
+            onClick={onFocus}
+            onKeyDown={(event) => {
+              if (!readOnly && (event.key === 'Backspace' || event.key === 'Delete')) {
+                event.preventDefault();
+                onRemove();
+              }
+            }}
+            className="group/divider flex min-h-7 w-full items-center py-2"
+            title="Separador"
+          >
+            <span
+              className={`block h-px w-full transition-colors ${
+                isFocused ? 'bg-slate-950' : 'bg-slate-200 group-hover/divider:bg-slate-300'
+              }`}
+            />
+          </button>
+        )}
+
         {block.type === 'image' && (
           <div className="mb-2 rounded-md bg-transparent">
             {block.content ? (
@@ -910,7 +949,7 @@ export const BlockWrapper = ({
           </div>
         )}
 
-        {block.type !== 'image' && !isViewBlock && block.type === 'code' && (
+        {block.type !== 'image' && block.type !== 'divider' && !isViewBlock && block.type === 'code' && (
           <textarea
             ref={textareaRef}
             className={`w-full resize-none bg-transparent py-1 leading-relaxed transition-all placeholder:text-slate-300 focus:outline-none ${typeStyles[block.type]}`}
@@ -926,7 +965,7 @@ export const BlockWrapper = ({
           />
         )}
 
-        {block.type !== 'image' && !isViewBlock && block.type !== 'code' && (
+        {block.type !== 'image' && block.type !== 'divider' && !isViewBlock && block.type !== 'code' && (
           isCollapsed ? (
             <button
               type="button"
@@ -946,9 +985,7 @@ export const BlockWrapper = ({
               contentEditable={!readOnly}
               suppressContentEditableWarning
               data-placeholder={placeholders[block.type]}
-              onInput={(event) => {
-                if (!readOnly) onUpdate(event.currentTarget.innerHTML);
-              }}
+              onInput={handleRichTextInput}
               onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
               onPaste={readOnly ? undefined : handleRichTextPaste}
               onFocus={onFocus}
