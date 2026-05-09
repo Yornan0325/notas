@@ -31,6 +31,7 @@ interface CodaState {
   updateBlockType: (id: string, type: Block['type']) => void;
   changeBlockType: (id: string, newType: Block['type']) => void;
   toggleBlockCollapsed: (id: string) => void;
+  toggleBlockFavorite: (id: string) => void;
   markAsSynced: (ids: string[]) => void;
   markPagesAsSynced: (ids: string[]) => void;
   removeBlock: (id: string) => void;
@@ -458,6 +459,25 @@ export const useCodaStore = create<CodaState>()(
               ? {
                   ...block,
                   isCollapsed: !block.isCollapsed,
+                  updatedAt: now(),
+                  synced: false,
+                }
+              : block
+          ),
+          pages: state.pages.map((page) =>
+            state.blocks.some((block) => block.id === id && block.pageId === page.id)
+              ? { ...page, updatedAt: now(), synced: false }
+              : page
+          ),
+        })),
+
+      toggleBlockFavorite: (id) =>
+        set((state) => ({
+          blocks: state.blocks.map((block) =>
+            block.id === id
+              ? {
+                  ...block,
+                  isFavorite: !block.isFavorite,
                   updatedAt: now(),
                   synced: false,
                 }

@@ -45,7 +45,7 @@ export const PageSidebar = ({
   onClose?: () => void;
   readOnly?: boolean;
 }) => {
-  const { pages, addPage } = useCodaStore();
+  const { pages, blocks, addPage } = useCodaStore();
   const documentRoot = getDocumentRoot(pages, docId);
   const docPages = pages.filter((page) => page.docId === docId);
   const docPageIds = new Set(docPages.map((page) => page.id));
@@ -55,6 +55,10 @@ export const PageSidebar = ({
       page.id !== documentRoot?.id &&
       (!page.parentId || !docPageIds.has(page.parentId))
   );
+  const favoriteCountByPage = blocks.reduce<Record<string, number>>((counts, block) => {
+    if (block.isFavorite) counts[block.pageId] = (counts[block.pageId] || 0) + 1;
+    return counts;
+  }, {});
 
   const createPage = () => {
     if (readOnly) return;
@@ -120,6 +124,7 @@ export const PageSidebar = ({
                 page={page}
                 activePageId={activePageId}
                 onSelectPage={handleSelectPage}
+                favoriteCountByPage={favoriteCountByPage}
                 readOnly={readOnly}
               />
             ))}
@@ -147,11 +152,13 @@ const PageItem = ({
   page,
   activePageId,
   onSelectPage,
+  favoriteCountByPage,
   readOnly = false,
 }: {
   page: Page;
   activePageId: string | null;
   onSelectPage: (id: string) => void;
+  favoriteCountByPage: Record<string, number>;
   readOnly?: boolean;
 }) => {
   const {
@@ -171,6 +178,7 @@ const PageItem = ({
 
   const children = pages.filter((item) => item.parentId === page.id);
   const isActive = activePageId === page.id;
+  const favoriteCount = favoriteCountByPage[page.id] || 0;
 
   useEffect(() => {
     const handleClickOutside = (e: globalThis.MouseEvent) => {
@@ -289,7 +297,17 @@ const PageItem = ({
               }}
             />
           ) : (
-            <span className="block truncate font-medium">{page.title}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="block min-w-0 truncate font-medium">{page.title}</span>
+              {favoriteCount > 0 && (
+                <span
+                  className="inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-amber-100 px-1 text-[10px] font-bold leading-none text-amber-700 ring-1 ring-amber-200"
+                  title={`${favoriteCount} puntos favoritos`}
+                >
+                  {favoriteCount}
+                </span>
+              )}
+            </span>
           )}
         </div>
 
@@ -342,6 +360,7 @@ const PageItem = ({
               page={child}
               activePageId={activePageId}
               onSelectPage={onSelectPage}
+              favoriteCountByPage={favoriteCountByPage}
               readOnly={readOnly}
             />
           ))}

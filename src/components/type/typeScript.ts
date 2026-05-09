@@ -30,6 +30,7 @@ export interface Block {
   createdAt?: string;
   updatedAt?: string;
   isCollapsed?: boolean;
+  isFavorite?: boolean;
   attachmentPath?: string;
   attachmentName?: string;
   imageWidth?: number;

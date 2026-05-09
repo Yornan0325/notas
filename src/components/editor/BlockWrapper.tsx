@@ -65,6 +65,7 @@ interface BlockWrapperProps {
   onCloseSlashMenu: () => void;
   onChangeType: (type: Block['type']) => void;
   onToggleCollapse: () => void;
+  onToggleFavorite: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
   onFocus: () => void;
   readOnly?: boolean;
@@ -211,6 +212,7 @@ export const BlockWrapper = ({
   onCloseSlashMenu,
   onChangeType,
   onToggleCollapse,
+  onToggleFavorite,
   onKeyDown,
   onFocus,
   readOnly = false,
@@ -229,6 +231,7 @@ export const BlockWrapper = ({
   const imageFlow = block.imageFlow || 'stack';
   const isViewBlock = isViewBlockType(block.type);
   const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code' && block.type !== 'divider';
+  const canFavorite = !isViewBlock && block.type !== 'image' && block.type !== 'divider' && block.type !== 'code';
   const isCollapsed = canCollapse && Boolean(block.isCollapsed);
 
   useEffect(() => {
@@ -427,6 +430,8 @@ export const BlockWrapper = ({
     applyRichTextCommand('backColor', 'transparent');
   };
 
+  const isNarrowViewport = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+
   const toolbarButtonClass =
     'flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950';
 
@@ -437,7 +442,7 @@ export const BlockWrapper = ({
     <div
       id={`block-${block.id}`}
       data-editor-block="true"
-      className={`group relative -ml-14 flex items-start gap-2 rounded-md py-1 pl-14 transition-colors hover:bg-slate-50 ${blockShell}`}
+      className={`group relative flex items-start gap-1 rounded-md py-1 pl-0 transition-colors hover:bg-slate-50 md:-ml-14 md:gap-2 md:pl-14 ${blockShell}`}
       onMouseLeave={() => setShowSelector(false)}
       onDragOver={readOnly ? undefined : onImageDragOver}
       onDrop={readOnly ? undefined : onImageDrop}
@@ -452,20 +457,47 @@ export const BlockWrapper = ({
         <div className="absolute inset-y-2 right-1 w-1 rounded bg-slate-950" />
       )}
       {!readOnly && (
-        <div className="absolute left-2 top-2 z-20 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute -left-7 top-1 z-20 flex flex-col items-center gap-0.5 opacity-100 transition-opacity md:left-2 md:top-2 md:flex-row md:opacity-0 md:group-hover:opacity-100">
         <button
           type="button"
           onClick={() => setShowSelector(!showSelector)}
-          className="cursor-grab rounded p-1 text-slate-300 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm"
+          className="rounded p-0.5 text-slate-400 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm md:cursor-grab md:p-1 md:text-slate-300"
           title="Cambiar tipo de bloque"
         >
-          <GripVertical size={16} />
+          <GripVertical size={14} className="md:h-4 md:w-4" />
         </button>
+        {canFavorite && (
+          <button
+            type="button"
+            onClick={onToggleFavorite}
+            className="flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-amber-500 hover:shadow-sm md:h-6 md:w-6 md:text-slate-300"
+            title={block.isFavorite ? 'Quitar punto favorito' : 'Marcar punto favorito'}
+          >
+            <span
+              className={`h-2.5 w-2.5 rounded-full transition-all ${
+                block.isFavorite
+                  ? 'bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]'
+                  : 'border border-slate-300 bg-white'
+              }`}
+            />
+          </button>
+        )}
         </div>
       )}
 
+      {block.isFavorite && canFavorite && (
+        <button
+          type="button"
+          onClick={readOnly ? undefined : onToggleFavorite}
+          className="absolute left-7 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-amber-50 text-amber-500 ring-1 ring-amber-200 md:left-8"
+          title="Punto favorito"
+        >
+          <span className="h-2 w-2 rounded-full bg-amber-400" />
+        </button>
+      )}
+
       {showSelector && !readOnly && (
-        <div className="absolute left-10 top-0 z-[70] shadow-lg animate-in slide-in-from-left-2 duration-200">
+        <div className="fixed inset-x-2 bottom-20 z-[130] shadow-lg animate-in slide-in-from-bottom-2 duration-200 md:absolute md:bottom-auto md:left-10 md:top-0 md:inset-x-auto md:z-[70] md:slide-in-from-left-2">
           <BlockTypeSelector
             currentType={block.type}
             isCollapsed={Boolean(block.isCollapsed)}
@@ -500,7 +532,7 @@ export const BlockWrapper = ({
         </div>
       )}
 
-      <div className="flex min-w-[28px] justify-center pt-2.5 text-slate-400">
+      <div className="flex min-w-4 justify-center pt-2.5 text-slate-400 md:min-w-[28px]">
         {block.type === 'todo' && (
           <button
             type="button"
@@ -525,8 +557,8 @@ export const BlockWrapper = ({
       <div className="w-full">
         {toolbarPosition && !readOnly && (
           <div
-            className="fixed z-[120] flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-slate-600 shadow-xl"
-            style={{ left: toolbarPosition.left, top: toolbarPosition.top }}
+            className="fixed inset-x-1 bottom-2 z-[120] flex max-w-[calc(100vw-0.5rem)] items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-slate-600 shadow-xl md:inset-auto md:bottom-auto md:max-w-none md:-translate-x-1/2 md:gap-1 md:overflow-visible md:rounded-full md:px-3 md:py-2"
+            style={isNarrowViewport ? undefined : { left: toolbarPosition.left, top: toolbarPosition.top }}
             onMouseDown={(event) => event.preventDefault()}
           >
             <div className="relative">
@@ -540,7 +572,7 @@ export const BlockWrapper = ({
                 <span className="text-xs text-slate-400">⌄</span>
               </button>
               {toolbarMenu === 'style' && (
-                <div className="absolute left-0 top-12 w-[212px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                <div className="fixed inset-x-2 bottom-20 max-h-[62vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-xl md:absolute md:inset-x-auto md:bottom-auto md:left-0 md:top-12 md:w-[212px] md:overflow-visible">
                   <p className="mb-2 text-sm font-semibold text-slate-500">Text</p>
                   <div className="grid grid-cols-4 gap-2">
                     {textStyleOptions.map((item) => (
@@ -627,7 +659,7 @@ export const BlockWrapper = ({
               <span className="text-xs text-slate-400">⌄</span>
             </button>
             {toolbarMenu === 'decor' && (
-              <div className="absolute left-[132px] top-12 w-[272px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+              <div className="fixed inset-x-2 bottom-20 max-h-[62vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-xl md:absolute md:inset-x-auto md:bottom-auto md:left-[132px] md:top-12 md:w-[272px] md:overflow-visible">
                 {decorOptions.map((item) => (
                   <button
                     key={item.label}
@@ -669,7 +701,7 @@ export const BlockWrapper = ({
               </button>
 
               {(toolbarMenu === 'color' || toolbarMenu === 'highlight') && (
-                <div className="absolute left-0 top-11 w-[232px] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+                <div className="fixed inset-x-2 bottom-20 max-h-[62vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl md:absolute md:inset-x-auto md:bottom-auto md:left-0 md:top-11 md:w-[232px] md:overflow-visible">
                   <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-500">
                     <Palette size={15} />
                     {toolbarMenu === 'color' ? 'Text color' : 'Color and highlight'}
@@ -720,7 +752,7 @@ export const BlockWrapper = ({
                 <span className="text-xs text-slate-400">⌄</span>
               </button>
               {toolbarMenu === 'align' && (
-                <div className="absolute left-0 top-12 flex rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="fixed inset-x-2 bottom-20 flex rounded-2xl border border-slate-200 bg-white p-2 shadow-xl md:absolute md:inset-x-auto md:bottom-auto md:left-0 md:top-12">
                   {alignOptions.map((item) => (
                     <button
                       key={item.title}

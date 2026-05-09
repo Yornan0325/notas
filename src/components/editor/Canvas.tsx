@@ -84,6 +84,19 @@ const getBlockPlainText = (content: string) => {
 const isTextEntryBlock = (type: Block['type']) =>
   !isViewBlockType(type) && type !== 'image' && type !== 'divider';
 
+const favoriteFallbackLabels: Partial<Record<Block['type'], string>> = {
+  h1: 'Titulo favorito',
+  h2: 'Seccion favorita',
+  h3: 'Subtitulo favorito',
+  quote: 'Cita favorita',
+  callout: 'Aviso favorito',
+  todo: 'Tarea favorita',
+  text: 'Texto favorito',
+};
+
+const placeholdersForFavorite = (type: Block['type']) =>
+  favoriteFallbackLabels[type] || 'Bloque favorito';
+
 export const Canvas = ({
   pageId,
   pageTitle,
@@ -108,6 +121,7 @@ export const Canvas = ({
     moveBlock,
     changeBlockType,
     toggleBlockCollapsed,
+    toggleBlockFavorite,
     updatePageTitle,
     removeBlock,
   } = useCodaStore();
@@ -161,6 +175,19 @@ export const Canvas = ({
 
     return rows;
   }, [pageBlocks]);
+
+  const favoriteTextBlocks = useMemo(
+    () => pageBlocks.filter((block) => block.isFavorite && isTextEntryBlock(block.type)),
+    [pageBlocks]
+  );
+
+  const scrollToBlock = (blockId: string) => {
+    document.getElementById(`block-${blockId}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    });
+    setActiveBlockId(blockId);
+  };
 
   const focusNewBlock = (type: Block['type'] = 'text', afterBlockId?: string) => {
     if (readOnly) return '';
@@ -512,6 +539,7 @@ export const Canvas = ({
       onCloseSlashMenu={() => setSlashMenu(null)}
       onChangeType={(type) => changeBlockTypeWithDefaults(block.id, type)}
       onToggleCollapse={() => toggleBlockCollapsed(block.id)}
+      onToggleFavorite={() => toggleBlockFavorite(block.id)}
       onKeyDown={(e) => handleKeyDown(e, block.id)}
       onFocus={() => setActiveBlockId(block.id)}
       readOnly={readOnly}
@@ -522,7 +550,7 @@ export const Canvas = ({
     <div
       ref={canvasRef}
       data-editor-canvas="true"
-      className="relative mx-auto min-h-screen max-w-4xl flex-1 px-6 py-12 md:px-12"
+      className="relative mx-auto min-h-screen max-w-4xl flex-1 px-8 py-10 md:px-12 md:py-12"
       onMouseDown={handleCanvasMouseDown}
       onPaste={readOnly ? undefined : handleCanvasPaste}
       tabIndex={-1}
@@ -568,6 +596,40 @@ export const Canvas = ({
         <p className="mb-12 text-lg text-slate-400">
           Anade una descripcion o empieza a escribir...
         </p>
+      )}
+
+      {favoriteTextBlocks.length > 0 && (
+        <aside className="fixed bottom-2 left-2 right-2 z-30 rounded-md border border-amber-200 bg-white/95 p-1.5 shadow-lg shadow-amber-100/70 backdrop-blur md:left-auto md:right-4 md:top-24 md:bottom-auto md:w-56 md:p-2 xl:block">
+          <div className="mb-1 flex items-center justify-between gap-2 px-1.5 md:mb-2 md:justify-start">
+            <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]" />
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 md:text-xs">Favoritos</p>
+            </div>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 md:hidden">
+              {favoriteTextBlocks.length}
+            </span>
+          </div>
+          <div className="flex max-h-20 gap-1 overflow-x-auto overflow-y-hidden pb-0.5 md:max-h-[calc(100vh-8rem)] md:flex-col md:gap-0 md:overflow-x-hidden md:overflow-y-auto md:pb-0 md:space-y-1">
+            {favoriteTextBlocks.map((block) => {
+              const text = getBlockPlainText(block.content) || placeholdersForFavorite(block.type);
+
+              return (
+                <button
+                  key={block.id}
+                  type="button"
+                  onClick={() => scrollToBlock(block.id)}
+                  className="group flex min-w-[120px] max-w-[160px] items-start gap-1.5 rounded px-1.5 py-1 text-left text-[11px] text-slate-600 transition-colors hover:bg-amber-50 hover:text-slate-950 md:w-full md:min-w-0 md:max-w-none md:gap-2 md:rounded-md md:px-2 md:py-1.5 md:text-xs"
+                  title={text}
+                >
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 group-hover:shadow-[0_0_0_3px_rgba(251,191,36,0.18)]" />
+                  <span className="min-w-0 overflow-hidden text-ellipsis font-medium leading-snug [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
+                    {text}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
       )}
 
       <div className="mt-10 space-y-1">

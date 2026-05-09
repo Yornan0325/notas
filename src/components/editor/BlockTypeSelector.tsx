@@ -129,13 +129,14 @@ export const BlockTypeSelector = ({
   ];
 
   return (
-    <div className="flex items-start gap-2 animate-in fade-in zoom-in-95 duration-200">
-      <div className="flex w-[220px] flex-col gap-0.5 rounded-md border border-slate-200 bg-white p-1 shadow-md">
+    <div className="flex max-h-[72vh] w-full flex-col gap-2 overflow-y-auto animate-in fade-in zoom-in-95 duration-200 md:w-auto md:flex-row md:items-start md:overflow-visible">
+      <div className="flex w-full flex-col gap-0.5 rounded-md border border-slate-200 bg-white p-1 shadow-md md:w-[220px]">
         {mainActions.map((action) => (
           <button
             key={action.id}
             type="button"
             onClick={() => {
+              if (action.hasSubmenu) setActiveSubmenu(action.id as SubmenuId);
               if (action.id === 'collapse') onToggleCollapse?.();
               if (action.id === 'return') onConvertToText?.();
               if (action.id === 'copy') onCopyLink?.();
@@ -175,7 +176,7 @@ export const BlockTypeSelector = ({
       </div>
 
       {activeSubmenu === 'styles' && (
-        <div className="flex w-[240px] flex-col gap-4 rounded-md border border-slate-200 bg-white p-4 shadow-md animate-in slide-in-from-left-2 duration-200">
+        <div className="flex w-full flex-col gap-4 rounded-md border border-slate-200 bg-white p-4 shadow-md animate-in slide-in-from-left-2 duration-200 md:w-[240px]">
           {groups.map((group) => (
             <div key={group.label} className="flex flex-col gap-2">
               <p className="px-1 text-xs font-medium text-slate-500">{group.label}</p>
@@ -202,7 +203,7 @@ export const BlockTypeSelector = ({
       )}
 
       {activeSubmenu === 'insert' && (
-        <div className="flex w-[220px] flex-col gap-0.5 rounded-md border border-slate-200 bg-white p-1 shadow-md animate-in slide-in-from-left-2 duration-200">
+        <div className="flex w-full flex-col gap-0.5 rounded-md border border-slate-200 bg-white p-1 shadow-md animate-in slide-in-from-left-2 duration-200 md:w-[220px]">
           {insertOptions.map((option) => (
             <button
               key={option.label}
