@@ -130,6 +130,7 @@ export const Canvas = ({
 
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const [isFavoritePanelOpen, setIsFavoritePanelOpen] = useState(false);
   const [dragState, setDragState] = useState<{
     blockId: string;
     targetId: string | null;
@@ -599,17 +600,15 @@ export const Canvas = ({
       )}
 
       {favoriteTextBlocks.length > 0 && (
-        <aside className="fixed bottom-2 left-2 right-2 z-30 rounded-md border border-amber-200 bg-white/95 p-1.5 shadow-lg shadow-amber-100/70 backdrop-blur md:left-auto md:right-4 md:top-24 md:bottom-auto md:w-56 md:p-2 xl:block">
-          <div className="mb-1 flex items-center justify-between gap-2 px-1.5 md:mb-2 md:justify-start">
+        <>
+        <aside className="fixed right-4 top-24 z-30 hidden w-56 rounded-lg border border-amber-200 bg-white/95 p-2 shadow-lg shadow-amber-100/70 backdrop-blur md:block">
+          <div className="mb-2 flex items-center gap-2 px-1.5">
             <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]" />
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 md:text-xs">Favoritos</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Favoritos</p>
             </div>
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 md:hidden">
-              {favoriteTextBlocks.length}
-            </span>
           </div>
-          <div className="flex max-h-20 gap-1 overflow-x-auto overflow-y-hidden pb-0.5 md:max-h-[calc(100vh-8rem)] md:flex-col md:gap-0 md:overflow-x-hidden md:overflow-y-auto md:pb-0 md:space-y-1">
+          <div className="max-h-[calc(100vh-8rem)] space-y-1 overflow-y-auto">
             {favoriteTextBlocks.map((block) => {
               const text = getBlockPlainText(block.content) || placeholdersForFavorite(block.type);
 
@@ -618,7 +617,7 @@ export const Canvas = ({
                   key={block.id}
                   type="button"
                   onClick={() => scrollToBlock(block.id)}
-                  className="group flex min-w-[120px] max-w-[160px] items-start gap-1.5 rounded px-1.5 py-1 text-left text-[11px] text-slate-600 transition-colors hover:bg-amber-50 hover:text-slate-950 md:w-full md:min-w-0 md:max-w-none md:gap-2 md:rounded-md md:px-2 md:py-1.5 md:text-xs"
+                  className="group flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-amber-50 hover:text-slate-950"
                   title={text}
                 >
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 group-hover:shadow-[0_0_0_3px_rgba(251,191,36,0.18)]" />
@@ -630,6 +629,69 @@ export const Canvas = ({
             })}
           </div>
         </aside>
+
+        <button
+          type="button"
+          onClick={() => setIsFavoritePanelOpen(true)}
+          className="fixed bottom-4 right-4 z-30 inline-flex h-11 items-center gap-2 rounded-full border border-amber-200 bg-white/95 px-3 text-xs font-bold uppercase tracking-wide text-amber-700 shadow-lg shadow-amber-100/70 backdrop-blur md:hidden"
+          aria-label="Abrir favoritos"
+        >
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]" />
+          Favoritos
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] leading-none">
+            {favoriteTextBlocks.length}
+          </span>
+        </button>
+
+        {isFavoritePanelOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 bg-slate-950/20"
+              aria-label="Cerrar favoritos"
+              onClick={() => setIsFavoritePanelOpen(false)}
+            />
+            <aside className="absolute inset-x-3 bottom-3 max-h-[46vh] rounded-xl border border-amber-200 bg-white p-3 shadow-2xl shadow-amber-100/80">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.18)]" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Favoritos</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFavoritePanelOpen(false)}
+                  className="rounded-full px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+                >
+                  Cerrar
+                </button>
+              </div>
+              <div className="max-h-[34vh] space-y-1 overflow-y-auto">
+                {favoriteTextBlocks.map((block) => {
+                  const text = getBlockPlainText(block.content) || placeholdersForFavorite(block.type);
+
+                  return (
+                    <button
+                      key={block.id}
+                      type="button"
+                      onClick={() => {
+                        scrollToBlock(block.id);
+                        setIsFavoritePanelOpen(false);
+                      }}
+                      className="group flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm text-slate-600 transition-colors hover:bg-amber-50 hover:text-slate-950"
+                      title={text}
+                    >
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                      <span className="min-w-0 overflow-hidden text-ellipsis font-medium leading-snug [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
+                        {text}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+          </div>
+        )}
+        </>
       )}
 
       <div className="mt-10 space-y-1">

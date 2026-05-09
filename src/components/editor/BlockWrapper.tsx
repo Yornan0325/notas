@@ -457,7 +457,11 @@ export const BlockWrapper = ({
         <div className="absolute inset-y-2 right-1 w-1 rounded bg-slate-950" />
       )}
       {!readOnly && (
-        <div className="absolute left-1 top-1 z-20 flex flex-col items-center gap-1 opacity-100 transition-opacity md:left-2 md:top-2 md:flex-row md:gap-0.5 md:opacity-0 md:group-hover:opacity-100">
+        <div
+          className={`absolute left-1 top-1 z-20 flex flex-col items-center gap-1 transition-opacity md:left-2 md:top-2 md:flex-row md:gap-0.5 md:opacity-0 md:group-hover:opacity-100 ${
+            isFocused || showSelector ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
         <button
           type="button"
           onClick={() => setShowSelector(!showSelector)}
@@ -489,10 +493,10 @@ export const BlockWrapper = ({
         <button
           type="button"
           onClick={readOnly ? undefined : onToggleFavorite}
-          className="absolute left-2 top-9 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-amber-50 text-amber-500 ring-1 ring-amber-200 md:left-8 md:top-1/2 md:h-5 md:w-5 md:-translate-y-1/2"
+          className="absolute left-4 top-1/2 z-10 flex h-3 w-3 -translate-y-1/2 items-center justify-center rounded-full bg-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.16)] md:left-8 md:h-5 md:w-5 md:bg-amber-50 md:ring-1 md:ring-amber-200 md:shadow-none"
           title="Punto favorito"
         >
-          <span className="h-3 w-3 rounded-full bg-amber-400 md:h-2 md:w-2" />
+          <span className="hidden h-2 w-2 rounded-full bg-amber-400 md:block" />
         </button>
       )}
 
