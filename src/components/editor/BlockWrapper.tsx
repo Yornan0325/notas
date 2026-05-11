@@ -182,9 +182,17 @@ const sanitizePastedHtml = (html: string) => {
   return parsed.body.innerHTML;
 };
 
-const getPlainTextFromHtml = (html: string) => {
-  const parsed = new DOMParser().parseFromString(html || '', 'text/html');
-  return parsed.body.textContent?.trim() || '';
+const getCollapsedTitleFromHtml = (html: string) => {
+  const withBreaks = (html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p|h1|h2|h3|li|blockquote)>/gi, '\n');
+  const parsed = new DOMParser().parseFromString(withBreaks, 'text/html');
+  return (
+    parsed.body.textContent
+      ?.split('\n')
+      .map((line) => line.trim())
+      .find(Boolean) || ''
+  );
 };
 
 const escapeHtml = (value: string) =>
@@ -1043,7 +1051,7 @@ export const BlockWrapper = ({
             >
               <ChevronRight size={16} className="shrink-0 text-slate-400" />
               <span className="truncate">
-                {getPlainTextFromHtml(block.content) || placeholders[block.type]}
+                {getCollapsedTitleFromHtml(block.content) || placeholders[block.type]}
               </span>
             </button>
             ) : (
