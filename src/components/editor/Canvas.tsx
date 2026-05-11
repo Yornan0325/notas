@@ -19,24 +19,38 @@ type PastedImageSource =
   | { kind: 'file'; file: File }
   | { kind: 'url'; url: string; name: string };
 
+const imageExtensionPattern = /\.(apng|avif|gif|jpe?g|png|svg|webp|bmp|ico|tiff?)(\?.*)?$/i;
+
+const isLikelyImageUrl = (value: string) => {
+  if (/^data:image\//i.test(value)) return true;
+
+  try {
+    const parsedUrl = new URL(value);
+    return imageExtensionPattern.test(parsedUrl.pathname);
+  } catch {
+    return imageExtensionPattern.test(value);
+  }
+};
+
 const normalizeImageUrl = (value: string | null) => {
   const url = value?.trim();
   if (!url) return null;
 
   if (/^data:image\//i.test(url)) return url;
-  if (!/^https?:\/\//i.test(url)) return null;
+  if (!/^(https?:\/\/|file:\/\/|\/|[a-z]:\\|\\\\)/i.test(url)) return null;
 
   try {
     const parsedUrl = new URL(url);
     const googleImageUrl = parsedUrl.searchParams.get('imgurl');
     if (googleImageUrl && /^https?:\/\//i.test(googleImageUrl)) {
-      return decodeURIComponent(googleImageUrl);
+      const decodedImageUrl = decodeURIComponent(googleImageUrl);
+      return isLikelyImageUrl(decodedImageUrl) ? decodedImageUrl : null;
     }
   } catch {
-    return url;
+    return isLikelyImageUrl(url) ? url : null;
   }
 
-  return url;
+  return isLikelyImageUrl(url) ? url : null;
 };
 
 const getBestSrcsetUrl = (srcset: string | null) => {
@@ -62,6 +76,9 @@ const getImageUrlFromHtml = (html: string) => {
   const img = doc.querySelector('img');
   if (!img) return null;
 
+  const plainText = doc.body.textContent?.trim();
+  if (plainText && plainText.length > 1) return null;
+
   return (
     normalizeImageUrl(img.getAttribute('src')) ||
     normalizeImageUrl(img.getAttribute('data-src')) ||
@@ -73,6 +90,13 @@ const getImageUrlFromHtml = (html: string) => {
 const getImageUrlFromText = (text: string) => {
   const value = text.trim();
   return normalizeImageUrl(value);
+};
+
+const getPlainTextFromClipboard = (clipboardData: DataTransfer) => {
+  const text = clipboardData.getData('text/plain').trim();
+  if (!text) return null;
+  if (getImageUrlFromText(text)) return null;
+  return text;
 };
 
 const getBlockPlainText = (content: string) => {
@@ -426,6 +450,19 @@ export const Canvas = ({
     handleAttachImage(newBlockId, source);
   };
 
+  const pasteTextIntoPage = (text: string) => {
+    if (readOnly) return;
+
+    const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
+    const targetBlockId =
+      activeBlock && isTextEntryBlock(activeBlock.type) && getBlockPlainText(activeBlock.content) === ''
+        ? activeBlock.id
+        : addBlock('text', pageId, activeBlock?.id || pageBlocks[pageBlocks.length - 1]?.id);
+
+    updateBlock(targetBlockId, text.replace(/\n/g, '<br>'));
+    setActiveBlockId(targetBlockId);
+  };
+
   const addViewBlockBelow = (type: ViewBlockType, afterBlockId?: string) => {
     if (readOnly) return;
     const newBlockId = addBlock(type, pageId, afterBlockId);
@@ -444,10 +481,20 @@ export const Canvas = ({
   const handleCanvasPaste = (event: ClipboardEvent<HTMLDivElement>) => {
     if (readOnly) return;
     const imageSource = getImageFromClipboard(event.clipboardData);
-    if (!imageSource) return;
+    if (imageSource) {
+      event.preventDefault();
+      pasteImageIntoPage(imageSource);
+      return;
+    }
+
+    const text = getPlainTextFromClipboard(event.clipboardData);
+    if (!text) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, [contenteditable="true"]')) return;
 
     event.preventDefault();
-    pasteImageIntoPage(imageSource);
+    pasteTextIntoPage(text);
   };
 
   const getDropPlacement = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
@@ -502,10 +549,17 @@ export const Canvas = ({
       if (!pasteBelongsToCanvas) return;
 
       const imageSource = getImageFromClipboard(event.clipboardData);
-      if (!imageSource) return;
+      if (imageSource) {
+        event.preventDefault();
+        pasteImageIntoPage(imageSource);
+        return;
+      }
+
+      const text = getPlainTextFromClipboard(event.clipboardData);
+      if (!text) return;
 
       event.preventDefault();
-      pasteImageIntoPage(imageSource);
+      pasteTextIntoPage(text);
     };
 
     window.addEventListener('paste', handleWindowPaste);
