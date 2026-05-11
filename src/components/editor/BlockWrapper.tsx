@@ -290,6 +290,48 @@ export const BlockWrapper = ({
     selection?.addRange(range);
   }, [block.content, isFocused]);
 
+  useEffect(() => {
+    if (!toolbarPosition || readOnly) return;
+
+    const closeToolbarIfSelectionIsGone = (event?: Event) => {
+      const editor = richTextRef.current;
+      const selection = window.getSelection();
+      const target = event?.target as Node | null;
+      const toolbar = document.querySelector('[data-rich-text-toolbar="true"]');
+
+      if (target && (editor?.contains(target) || toolbar?.contains(target))) return;
+      if (!selection || selection.isCollapsed || !editor || !editor.contains(selection.anchorNode)) {
+        setToolbarPosition(null);
+        setToolbarMenu(null);
+        return;
+      }
+
+      if (target && !editor.contains(target)) {
+        setToolbarPosition(null);
+        setToolbarMenu(null);
+      }
+    };
+
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setToolbarPosition(null);
+        setToolbarMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', closeToolbarIfSelectionIsGone);
+    document.addEventListener('touchstart', closeToolbarIfSelectionIsGone);
+    document.addEventListener('selectionchange', closeToolbarIfSelectionIsGone);
+    document.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', closeToolbarIfSelectionIsGone);
+      document.removeEventListener('touchstart', closeToolbarIfSelectionIsGone);
+      document.removeEventListener('selectionchange', closeToolbarIfSelectionIsGone);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [readOnly, toolbarPosition]);
+
   const blockShell =
     block.type === 'code'
       ? 'rounded-md border border-slate-200 bg-slate-50 px-3 py-2'
@@ -600,6 +642,7 @@ export const BlockWrapper = ({
       <div className="w-full">
         {toolbarPosition && !readOnly && (
           <div
+            data-rich-text-toolbar="true"
             className="fixed inset-x-1 bottom-2 z-[120] flex max-w-[calc(100vw-0.5rem)] items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-slate-600 shadow-xl md:inset-auto md:bottom-auto md:max-w-none md:-translate-x-1/2 md:gap-1 md:overflow-visible md:rounded-full md:px-3 md:py-2"
             style={isNarrowViewport ? undefined : { left: toolbarPosition.left, top: toolbarPosition.top }}
             onMouseDown={(event) => event.preventDefault()}
