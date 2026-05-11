@@ -60,10 +60,11 @@ export const Sidebar = ({
 
   const sidebarContent = (
     <>
-      <WorkspaceNav />
-      <Separator className="my-3" />
+      <div className="flex h-14 shrink-0 items-center border-b border-slate-200 px-3">
+        <WorkspaceNav />
+      </div>
 
-      <nav className="space-y-1">
+      <nav className="space-y-1 p-3">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
 
@@ -84,7 +85,7 @@ export const Sidebar = ({
         })}
       </nav>
 
-      <div className="mt-auto">
+      <div className="mt-auto p-3">
         <Separator className="mb-3" />
         <div ref={accountMenuRef} className="relative">
           {isAccountMenuOpen && (
@@ -135,7 +136,7 @@ export const Sidebar = ({
       <aside
         data-mode={mode}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white p-3 text-slate-700 shadow-xl transition-transform duration-200 md:static md:z-auto md:w-64 md:translate-x-0 md:shadow-none',
+          'fixed inset-y-0 left-0 z-50 flex h-full w-72 shrink-0 flex-col border-r border-slate-200 bg-white text-slate-700 shadow-xl transition-transform duration-200 md:static md:z-auto md:w-64 md:translate-x-0 md:shadow-none',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
       >

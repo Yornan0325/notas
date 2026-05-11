@@ -44,7 +44,7 @@ export const WorkspaceNav = () => {
   return (
     <Button
       variant="ghost"
-      className="h-auto w-full justify-start gap-3 px-2 py-2 text-left"
+      className="h-10 w-full justify-start gap-3 px-2 text-left"
       type="button"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-950 text-xs font-semibold text-white">

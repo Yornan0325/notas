@@ -13,6 +13,10 @@
   body {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
+  .dark {
+    color-scheme: dark;
+  }
 }
 
 /* Estilos para que los bloques se sientan como Coda */
@@ -135,4 +139,82 @@ textarea::-webkit-scrollbar {
 .rich-text-editor th {
   background: #f8fafc;
   font-weight: 600;
+}
+
+.dark body {
+  background: #222222;
+}
+
+.dark .bg-white,
+.dark .bg-white\/95 {
+  background-color: rgb(34 34 34 / 0.96) !important;
+}
+
+.dark .bg-slate-50,
+.dark .hover\:bg-slate-50:hover {
+  background-color: #222222 !important;
+}
+
+.dark .bg-slate-100,
+.dark .hover\:bg-slate-100:hover {
+  background-color: #2c2c2c !important;
+}
+
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .hover\:text-slate-950:hover {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-400,
+.dark .placeholder\:text-slate-300::placeholder,
+.dark .empty\:before\:text-slate-300:empty::before {
+  color: #94a3b8 !important;
+}
+
+.dark .border-slate-200,
+.dark .border-slate-100 {
+  border-color: #334155 !important;
+}
+
+.dark .shadow-sm,
+.dark .shadow-md,
+.dark .shadow-lg,
+.dark .shadow-xl,
+.dark .shadow-2xl {
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.35) !important;
+}
+
+.dark .rich-text-editor h1,
+.dark .rich-text-editor h2,
+.dark .rich-text-editor h3 {
+  color: #f8fafc;
+}
+
+.dark .rich-text-editor code,
+.dark .rich-text-editor pre {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.dark .rich-text-editor th {
+  background: #1e293b;
+}
+
+.dark .rich-text-editor th,
+.dark .rich-text-editor td {
+  border-color: #334155;
+}
+
+.dark [data-collapsible-content="true"] .rich-text-editor,
+.dark [data-collapsible-content="true"] .rich-text-editor * {
+  background-color: transparent !important;
+  color: inherit !important;
 }

@@ -1101,7 +1101,7 @@ export const BlockWrapper = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className={`flex min-h-[32px] w-full items-center gap-2 rounded-md px-1 py-1 text-left text-slate-700 hover:bg-slate-50 ${typeStyles[block.type]}`}
+              className={`flex min-h-[32px] w-full items-center gap-2 rounded-md px-1 py-1 text-left text-slate-700 ${typeStyles[block.type]}`}
               title="Expandir contenido"
             >
               <ChevronRight size={16} className="shrink-0 text-slate-400" />
@@ -1110,7 +1110,7 @@ export const BlockWrapper = ({
               </span>
             </button>
             ) : (
-              <div className="flex w-full items-start gap-2 rounded-md px-1 py-1.5 hover:bg-slate-50">
+              <div data-collapsible-content="true" className="flex w-full items-start gap-2 rounded-md px-1 py-1.5">
                 <button
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}

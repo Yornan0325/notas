@@ -87,31 +87,30 @@ export const PageSidebar = ({
       onClick={onClose}
     />
     <aside className="fixed inset-y-0 left-0 z-50 flex h-full w-[min(20rem,88vw)] shrink-0 flex-col border-r border-slate-200 bg-white shadow-xl md:static md:z-auto md:w-72 md:shadow-none">
-      <div className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <Link
-              to="/"
-              className="inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
-              aria-label="Volver al workspace"
-              onClick={closeOnMobile}
-            >
-              <ArrowLeft size={16} className="shrink-0" />
-              <span className="leading-none">Puesto de trabajo</span>
-            </Link>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
+        <Link
+          to="/"
+          className="inline-flex h-9 min-w-0 items-center gap-2 rounded-md px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
+          aria-label="Volver al workspace"
+          onClick={closeOnMobile}
+        >
+          <ArrowLeft size={16} className="shrink-0" />
+          <span className="truncate leading-none">Puesto de trabajo</span>
+        </Link>
 
-            <h2 className="mt-2 max-w-48 truncate text-sm font-semibold text-slate-950">
-              {documentRoot?.title || 'Documento'}
-            </h2>
-          </div>
-          {!readOnly && (
-            <Button type="button" variant="outline" size="icon" onClick={createPage} aria-label="Nueva pagina">
-              <Plus size={16} />
-            </Button>
-          )}
+        {!readOnly && (
+          <Button type="button" variant="outline" size="icon" onClick={createPage} aria-label="Nueva pagina">
+            <Plus size={16} />
+          </Button>
+        )}
+      </div>
+
+      <div className="px-4 py-3">
+        <div>
+          <h2 className="max-w-56 truncate text-sm font-semibold text-slate-950">
+            {documentRoot?.title || 'Documento'}
+          </h2>
         </div>
-
-        <Separator />
       </div>
 
 

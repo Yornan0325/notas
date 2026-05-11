@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, PanelLeftClose, PanelLeftOpen, Share2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Moon, PanelLeftClose, PanelLeftOpen, Share2, Sun } from 'lucide-react';
 import { useCodaStore } from '../../store/useCodaStore';
 import { getDocumentRoot } from '../../lib/documents';
 import { Button } from '../ui/Button';
@@ -17,6 +17,9 @@ const EditorPage = () => {
   const { loading, user } = useSyncContext();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('notas-theme') === 'dark' : false
+  );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
@@ -59,6 +62,11 @@ const EditorPage = () => {
     currentPage?.ownerWorkspaceId && currentPage.ownerWorkspaceId !== user?.email
   );
   const isSharedReadOnly = isSharedFromAnotherWorkspace && currentPage?.sharePermission !== 'edit';
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('notas-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (!docId || initializedDocIdRef.current === docId) return;
@@ -115,10 +123,20 @@ const EditorPage = () => {
             {isSidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
           </Button>
 
+          <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsDarkMode((value) => !value)}
+            aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}
+            title={isDarkMode ? 'Modo claro' : 'Modo oscuro'}
+          >
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </Button>
+
           {!isSharedReadOnly && (
             <Button
               variant="outline"
-              className='absolute right-4'
               size="sm"
               icon={<Share2 size={15} />}
               onClick={() => setShareTarget('page')}
@@ -127,6 +145,7 @@ const EditorPage = () => {
               Pagina
             </Button>
           )}
+          </div>
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto bg-white">
