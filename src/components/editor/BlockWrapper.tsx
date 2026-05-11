@@ -15,6 +15,7 @@ import {
   Bold,
   Check,
   CheckSquare,
+  ChevronDown,
   ChevronRight,
   Code,
   Columns3,
@@ -65,6 +66,7 @@ interface BlockWrapperProps {
   onOpenSlashMenu: (position: { x: number; y: number }) => void;
   onCloseSlashMenu: () => void;
   onChangeType: (type: Block['type']) => void;
+  onToggleAccordion: () => void;
   onToggleCollapse: () => void;
   onToggleFavorite: () => void;
   onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
@@ -212,6 +214,7 @@ export const BlockWrapper = ({
   onOpenSlashMenu,
   onCloseSlashMenu,
   onChangeType,
+  onToggleAccordion,
   onToggleCollapse,
   onToggleFavorite,
   onKeyDown,
@@ -233,7 +236,8 @@ export const BlockWrapper = ({
   const isViewBlock = isViewBlockType(block.type);
   const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code' && block.type !== 'divider';
   const canFavorite = !isViewBlock && block.type !== 'image' && block.type !== 'divider' && block.type !== 'code';
-  const isCollapsed = canCollapse && Boolean(block.isCollapsed);
+  const isAccordion = canCollapse && Boolean(block.isAccordion || block.isCollapsed);
+  const isCollapsed = isAccordion && Boolean(block.isCollapsed);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -531,13 +535,13 @@ export const BlockWrapper = ({
         <div className="fixed inset-x-2 bottom-20 z-[130] shadow-lg animate-in slide-in-from-bottom-2 duration-200 md:absolute md:bottom-auto md:left-10 md:top-0 md:inset-x-auto md:z-[70] md:slide-in-from-left-2">
           <BlockTypeSelector
             currentType={block.type}
-            isCollapsed={Boolean(block.isCollapsed)}
+            isAccordion={isAccordion}
             onSelect={(type) => {
               onChangeType(type);
               setShowSelector(false);
             }}
             onToggleCollapse={() => {
-              if (canCollapse) onToggleCollapse();
+              if (canCollapse) onToggleAccordion();
             }}
             onInsertAbove={() => {
               onInsertDividerAbove();
@@ -1029,11 +1033,12 @@ export const BlockWrapper = ({
         )}
 
         {block.type !== 'image' && block.type !== 'divider' && !isViewBlock && block.type !== 'code' && (
-          isCollapsed ? (
+          isAccordion ? (
+            isCollapsed ? (
             <button
               type="button"
               onClick={onToggleCollapse}
-              className={`flex min-h-[28px] w-full items-center gap-2 rounded-md bg-slate-50 px-2 py-1 text-left text-slate-700 hover:bg-slate-100 ${typeStyles[block.type]}`}
+              className={`flex min-h-[32px] w-full items-center gap-2 rounded-md px-1 py-1 text-left text-slate-700 hover:bg-slate-50 ${typeStyles[block.type]}`}
               title="Expandir contenido"
             >
               <ChevronRight size={16} className="shrink-0 text-slate-400" />
@@ -1041,6 +1046,33 @@ export const BlockWrapper = ({
                 {getPlainTextFromHtml(block.content) || placeholders[block.type]}
               </span>
             </button>
+            ) : (
+              <div className="flex w-full items-start gap-2 rounded-md px-1 py-1.5 hover:bg-slate-50">
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={onToggleCollapse}
+                  className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-white hover:text-slate-700"
+                  title="Contraer contenido"
+                >
+                  <ChevronDown size={16} />
+                </button>
+                <div
+                  ref={richTextRef}
+                  className={`rich-text-editor min-h-[20px] min-w-0 flex-1 whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
+                  contentEditable={!readOnly}
+                  suppressContentEditableWarning
+                  data-placeholder={placeholders[block.type]}
+                  onInput={handleRichTextInput}
+                  onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
+                  onPaste={readOnly ? undefined : handleRichTextPaste}
+                  onFocus={onFocus}
+                  onMouseUp={updateToolbarPosition}
+                  onKeyUp={updateToolbarPosition}
+                  onBlur={() => setToolbarPosition(null)}
+                />
+              </div>
+            )
           ) : (
             <div
               ref={richTextRef}

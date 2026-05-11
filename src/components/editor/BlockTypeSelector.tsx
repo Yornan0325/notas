@@ -49,7 +49,7 @@ interface MainAction {
 
 export const BlockTypeSelector = ({
   currentType,
-  isCollapsed = false,
+  isAccordion = false,
   onSelect,
   onToggleCollapse,
   onInsertAbove,
@@ -59,7 +59,7 @@ export const BlockTypeSelector = ({
   onDelete,
 }: {
   currentType: Block['type'];
-  isCollapsed?: boolean;
+  isAccordion?: boolean;
   onSelect: (type: Block['type']) => void;
   onToggleCollapse?: () => void;
   onInsertAbove?: () => void;
@@ -114,7 +114,7 @@ export const BlockTypeSelector = ({
     { id: 'insert', label: 'Insertar linea', icon: Plus, hasSubmenu: true },
     {
       id: 'collapse',
-      label: isCollapsed ? 'Contenido colapsado' : 'Colapsar contenido',
+      label: isAccordion ? 'Quitar acordeon' : 'Colapsar contenido',
       icon: ChevronRightSquare,
       hasSubmenu: false,
     },
@@ -149,7 +149,7 @@ export const BlockTypeSelector = ({
             className={`group flex w-full items-center gap-3 rounded-sm px-3 py-2 text-sm transition-colors ${
               action.id === 'delete'
                 ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
-                : action.id === 'collapse' && isCollapsed
+                : action.id === 'collapse' && isAccordion
                   ? 'bg-slate-950 text-white hover:bg-slate-800'
                 : activeSubmenu === action.id
                   ? 'bg-slate-100 text-slate-950'
@@ -162,7 +162,7 @@ export const BlockTypeSelector = ({
               className={
                 action.id === 'delete'
                   ? 'text-red-500'
-                  : action.id === 'collapse' && isCollapsed
+                  : action.id === 'collapse' && isAccordion
                     ? 'text-white'
                   : activeSubmenu === action.id
                     ? 'text-slate-950'

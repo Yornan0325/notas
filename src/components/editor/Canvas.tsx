@@ -120,6 +120,7 @@ export const Canvas = ({
     updateImageLayout,
     moveBlock,
     changeBlockType,
+    toggleBlockAccordion,
     toggleBlockCollapsed,
     toggleBlockFavorite,
     updatePageTitle,
@@ -539,6 +540,7 @@ export const Canvas = ({
       onOpenSlashMenu={(position) => setSlashMenu({ ...position, blockId: block.id })}
       onCloseSlashMenu={() => setSlashMenu(null)}
       onChangeType={(type) => changeBlockTypeWithDefaults(block.id, type)}
+      onToggleAccordion={() => toggleBlockAccordion(block.id)}
       onToggleCollapse={() => toggleBlockCollapsed(block.id)}
       onToggleFavorite={() => toggleBlockFavorite(block.id)}
       onKeyDown={(e) => handleKeyDown(e, block.id)}

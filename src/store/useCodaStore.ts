@@ -30,6 +30,7 @@ interface CodaState {
   setPages: (pages: Page[]) => void;
   updateBlockType: (id: string, type: Block['type']) => void;
   changeBlockType: (id: string, newType: Block['type']) => void;
+  toggleBlockAccordion: (id: string) => void;
   toggleBlockCollapsed: (id: string) => void;
   toggleBlockFavorite: (id: string) => void;
   markAsSynced: (ids: string[]) => void;
@@ -452,12 +453,37 @@ export const useCodaStore = create<CodaState>()(
           ),
         })),
 
+      toggleBlockAccordion: (id) =>
+        set((state) => ({
+          blocks: state.blocks.map((block) =>
+            block.id === id
+              ? (() => {
+                  const isAccordionActive = Boolean(block.isAccordion || block.isCollapsed);
+
+                  return {
+                    ...block,
+                    isAccordion: !isAccordionActive,
+                    isCollapsed: isAccordionActive ? false : true,
+                    updatedAt: now(),
+                    synced: false,
+                  };
+                })()
+              : block
+          ),
+          pages: state.pages.map((page) =>
+            state.blocks.some((block) => block.id === id && block.pageId === page.id)
+              ? { ...page, updatedAt: now(), synced: false }
+              : page
+          ),
+        })),
+
       toggleBlockCollapsed: (id) =>
         set((state) => ({
           blocks: state.blocks.map((block) =>
             block.id === id
               ? {
                   ...block,
+                  isAccordion: true,
                   isCollapsed: !block.isCollapsed,
                   updatedAt: now(),
                   synced: false,

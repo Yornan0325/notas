@@ -29,6 +29,7 @@ export interface Block {
   blockOrder?: number;
   createdAt?: string;
   updatedAt?: string;
+  isAccordion?: boolean;
   isCollapsed?: boolean;
   isFavorite?: boolean;
   attachmentPath?: string;
