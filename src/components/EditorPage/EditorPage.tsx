@@ -9,17 +9,16 @@ import { ShareDialog } from '../sharing/ShareDialog';
 import { Canvas } from '../editor/Canvas';
 import { PageSidebar } from './PageSidebar';
 import { useSyncContext } from '../../context/SyncContext';
+import { useTheme } from '../../hooks/useTheme';
 
 const EditorPage = () => {
   const { docId } = useParams();
   const [searchParams] = useSearchParams();
   const { pages, addPage } = useCodaStore();
   const { loading, user } = useSyncContext();
+  const { isDarkMode, toggleTheme } = useTheme();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [shareTarget, setShareTarget] = useState<'workspace' | 'page' | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('notas-theme') === 'dark' : false
-  );
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
@@ -62,11 +61,6 @@ const EditorPage = () => {
     currentPage?.ownerWorkspaceId && currentPage.ownerWorkspaceId !== user?.email
   );
   const isSharedReadOnly = isSharedFromAnotherWorkspace && currentPage?.sharePermission !== 'edit';
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('notas-theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
 
   useEffect(() => {
     if (!docId || initializedDocIdRef.current === docId) return;
@@ -127,7 +121,7 @@ const EditorPage = () => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setIsDarkMode((value) => !value)}
+            onClick={toggleTheme}
             aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}
             title={isDarkMode ? 'Modo claro' : 'Modo oscuro'}
           >

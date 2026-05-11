@@ -12,6 +12,7 @@ import EditorPage from './components/EditorPage/EditorPage';
 import { getFirebaseAuth, isFirebaseConfigured } from './api/firebase';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { SyncProvider } from './context/SyncContext';
+import { initializeTheme } from './hooks/useTheme';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -49,6 +50,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  useEffect(() => {
+    initializeTheme();
+  }, []);
+
   return (
     <SyncProvider>
       <Router>

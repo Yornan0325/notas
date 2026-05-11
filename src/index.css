@@ -143,6 +143,12 @@ textarea::-webkit-scrollbar {
 
 .dark body {
   background: #222222;
+  color: #f8fafc;
+}
+
+.dark #root {
+  background: #222222;
+  color: #f8fafc;
 }
 
 .dark .bg-white,
@@ -158,6 +164,11 @@ textarea::-webkit-scrollbar {
 .dark .bg-slate-100,
 .dark .hover\:bg-slate-100:hover {
   background-color: #2c2c2c !important;
+}
+
+.dark .bg-slate-200,
+.dark .hover\:bg-slate-200:hover {
+  background-color: #3a3a3a !important;
 }
 
 .dark .text-slate-950,
@@ -180,7 +191,31 @@ textarea::-webkit-scrollbar {
 }
 
 .dark .border-slate-200,
-.dark .border-slate-100 {
+.dark .border-slate-100,
+.dark .border-gray-100 {
+  border-color: #334155 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  border-color: #334155;
+  background-color: #222222;
+  color: #f8fafc;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8;
+}
+
+.dark [role="dialog"],
+.dark [role="menu"],
+.dark [data-radix-popper-content-wrapper] {
+  color: #f8fafc;
+}
+
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
   border-color: #334155 !important;
 }
 

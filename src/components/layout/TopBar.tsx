@@ -1,5 +1,6 @@
-import { CloudCheck, CloudOff, Menu, Plus, Search } from 'lucide-react';
+import { CloudCheck, CloudOff, Menu, Moon, Plus, Search, Sun } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { useTheme } from '../../hooks/useTheme';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -8,6 +9,7 @@ export const TopBar = ({ onOpenSidebar }: { onOpenSidebar?: () => void }) => {
   const isOnline = navigator.onLine;
   const location = useLocation();
   const isDocView = location.pathname.includes('/doc/');
+  const { isDarkMode, toggleTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-6">
@@ -28,6 +30,15 @@ export const TopBar = ({ onOpenSidebar }: { onOpenSidebar?: () => void }) => {
           {isOnline ? <CloudCheck size={13} /> : <CloudOff size={13} />}
           {isOnline ? 'Local listo' : 'Offline'}
         </Badge>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleTheme}
+          aria-label={isDarkMode ? 'Activar modo claro' : 'Activar modo oscuro'}
+          title={isDarkMode ? 'Modo claro' : 'Modo oscuro'}
+        >
+          {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+        </Button>
         <Button variant="outline" size="sm" icon={<Plus size={16} />}>
           Crear
         </Button>

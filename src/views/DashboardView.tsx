@@ -114,7 +114,7 @@ export const DashboardView = () => {
               Mis documentos
             </h1>
             <p className="mt-2 text-sm text-slate-500">
-              Organiza paginas, texto e imagenes en una estructura tipo Coda.
+              Organiza paginas, texto e imagenes.
             </p>
           </div>
 
@@ -139,8 +139,8 @@ export const DashboardView = () => {
               onKeyDown={(event) => {
                 if (event.key === 'Enter') handleCreateFolder();
               }}
-              placeholder="Crear carpeta para guardar documentos..."
-              className="border-transparent shadow-none focus:ring-0"
+              placeholder="Crear carpeta..."
+              className="border-transparent shadow-none focus:ring-0 w-24"
             />
           </div>
           <Button
