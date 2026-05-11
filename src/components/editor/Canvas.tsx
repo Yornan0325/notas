@@ -591,6 +591,7 @@ export const Canvas = ({
       onUpdateImageLayout={(layout) => updateImageLayout(block.id, layout)}
       onAddViewBelow={(type) => addViewBlockBelow(type, block.id)}
       onUpdate={(val, e) => handleTextChange(block.id, val, e)}
+      isSlashMenuOpen={slashMenu?.blockId === block.id}
       onOpenSlashMenu={(position) => setSlashMenu({ ...position, blockId: block.id })}
       onCloseSlashMenu={() => setSlashMenu(null)}
       onChangeType={(type) => changeBlockTypeWithDefaults(block.id, type)}

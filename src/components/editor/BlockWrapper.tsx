@@ -63,6 +63,7 @@ interface BlockWrapperProps {
   onUpdateImageLayout: (layout: Pick<Block, 'imageWidth' | 'imageAlign' | 'imageFlow'>) => void;
   onAddViewBelow: (type: ViewBlockType) => void;
   onUpdate: (content: string, e?: ChangeEvent<HTMLTextAreaElement>) => void;
+  isSlashMenuOpen: boolean;
   onOpenSlashMenu: (position: { x: number; y: number }) => void;
   onCloseSlashMenu: () => void;
   onChangeType: (type: Block['type']) => void;
@@ -219,6 +220,7 @@ export const BlockWrapper = ({
   onUpdateImageLayout,
   onAddViewBelow,
   onUpdate,
+  isSlashMenuOpen,
   onOpenSlashMenu,
   onCloseSlashMenu,
   onChangeType,
@@ -332,6 +334,12 @@ export const BlockWrapper = ({
     };
   }, [readOnly, toolbarPosition]);
 
+  useEffect(() => {
+    if (!isSlashMenuOpen) return;
+    setToolbarPosition(null);
+    setToolbarMenu(null);
+  }, [isSlashMenuOpen]);
+
   const blockShell =
     block.type === 'code'
       ? 'rounded-md border border-slate-200 bg-slate-50 px-3 py-2'
@@ -383,6 +391,8 @@ export const BlockWrapper = ({
       setToolbarPosition(null);
       return;
     }
+
+    onCloseSlashMenu();
 
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
@@ -467,6 +477,8 @@ export const BlockWrapper = ({
 
     if (editor.textContent?.endsWith('/')) {
       const rect = editor.getBoundingClientRect();
+      setToolbarPosition(null);
+      setToolbarMenu(null);
       onOpenSlashMenu({ x: rect.left, y: rect.top + 34 });
     } else {
       onCloseSlashMenu();
