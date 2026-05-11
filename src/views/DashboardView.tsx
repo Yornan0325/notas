@@ -140,7 +140,7 @@ export const DashboardView = () => {
                 if (event.key === 'Enter') handleCreateFolder();
               }}
               placeholder="Crear carpeta..."
-              className="border-transparent shadow-none focus:ring-0 w-24"
+              className="border-transparent shadow-none focus:ring-0 w-1/2"
             />
           </div>
           <Button
