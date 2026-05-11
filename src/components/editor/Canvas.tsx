@@ -99,6 +99,18 @@ const getPlainTextFromClipboard = (clipboardData: DataTransfer) => {
   return text;
 };
 
+const normalizeListContentForType = (content: string, type: Block['type']) => {
+  if (type === 'bullet_list') {
+    return content.replace(/<ol\b/gi, '<ul').replace(/<\/ol>/gi, '</ul>');
+  }
+
+  if (type === 'numbered_list') {
+    return content.replace(/<ul\b/gi, '<ol').replace(/<\/ul>/gi, '</ol>');
+  }
+
+  return content;
+};
+
 const getBlockPlainText = (content: string) => {
   const element = document.createElement('div');
   element.innerHTML = content;
@@ -343,7 +355,7 @@ export const Canvas = ({
     if (isViewBlockType(type)) {
       updateBlock(slashMenu.blockId, stringifyViewContent(getDefaultViewContent(type)));
     } else if (currentBlock) {
-      updateBlock(slashMenu.blockId, currentBlock.content.replace('/', ''));
+      updateBlock(slashMenu.blockId, normalizeListContentForType(currentBlock.content.replace('/', ''), type));
     }
 
     setSlashMenu(null);
@@ -476,6 +488,12 @@ export const Canvas = ({
     changeBlockType(blockId, type);
     if (isViewBlockType(type)) {
       updateBlock(blockId, stringifyViewContent(getDefaultViewContent(type)));
+      return;
+    }
+
+    const currentBlock = blocks.find((block) => block.id === blockId);
+    if (currentBlock && (type === 'bullet_list' || type === 'numbered_list')) {
+      updateBlock(blockId, normalizeListContentForType(currentBlock.content, type));
     }
   };
 

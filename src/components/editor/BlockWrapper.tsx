@@ -230,6 +230,8 @@ const getCollapsedTitleFromHtml = (html: string) => {
   );
 };
 
+const hasStructuredListContent = (html: string) => /<(ul|ol)\b/i.test(html);
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, '&amp;')
@@ -496,7 +498,40 @@ export const BlockWrapper = ({
       return;
     }
 
+    const selection = window.getSelection();
+    const selectedNode = selection?.anchorNode;
+    const selectedElement =
+      selectedNode instanceof HTMLElement ? selectedNode : selectedNode?.parentElement;
+
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      selectedElement?.closest('li')
+    ) {
+      window.setTimeout(() => {
+        if (richTextRef.current) onUpdate(richTextRef.current.innerHTML);
+      });
+      return;
+    }
+
     onKeyDown(event);
+  };
+
+  const applyListStyle = (action: 'unordered' | 'ordered' | 'toggle' | 'checklist') => {
+    if (action === 'toggle') {
+      onChangeType('toggle_list');
+      return;
+    }
+
+    if (action === 'checklist') {
+      onChangeType('todo');
+      return;
+    }
+
+    onChangeType(action === 'ordered' ? 'numbered_list' : 'bullet_list');
+    applyRichTextCommand(action === 'ordered' ? 'insertOrderedList' : 'insertUnorderedList');
   };
 
   const handleRichTextPaste = (event: ClipboardEvent<HTMLDivElement>) => {
@@ -683,8 +718,10 @@ export const BlockWrapper = ({
             {isTodoChecked && <Check size={12} strokeWidth={3} />}
           </button>
         )}
-        {block.type === 'bullet_list' && <span className="mt-0.5 text-xl leading-none">-</span>}
-        {block.type === 'numbered_list' && (
+        {block.type === 'bullet_list' && !hasStructuredListContent(block.content) && (
+          <span className="mt-0.5 text-xl leading-none">-</span>
+        )}
+        {block.type === 'numbered_list' && !hasStructuredListContent(block.content) && (
           <span className="text-sm font-semibold text-slate-400">{index + 1}.</span>
         )}
         {block.type === 'toggle_list' && <ChevronRight size={16} className="mt-0.5" />}
@@ -736,9 +773,7 @@ export const BlockWrapper = ({
                         key={item.title}
                         type="button"
                         onClick={() => {
-                          if (item.action === 'ordered') applyRichTextCommand('insertOrderedList');
-                          else if (item.action === 'toggle') onChangeType('toggle_list');
-                          else applyRichTextCommand('insertUnorderedList');
+                          applyListStyle(item.action as 'unordered' | 'ordered' | 'toggle' | 'checklist');
                           setToolbarMenu(null);
                         }}
                         className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950"
