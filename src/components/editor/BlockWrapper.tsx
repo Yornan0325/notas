@@ -24,14 +24,12 @@ import {
   Heading1,
   Heading2,
   Heading3,
-  Image,
   Italic,
   Link,
   List,
   ListOrdered,
   Maximize2,
   Megaphone,
-  Minus,
   MessageSquarePlus,
   Palette,
   Quote,
@@ -183,6 +181,42 @@ const sanitizePastedHtml = (html: string) => {
   return parsed.body.innerHTML;
 };
 
+const imageExtensionPattern = /\.(apng|avif|gif|jpe?g|png|svg|webp|bmp|ico|tiff?)(\?.*)?$/i;
+
+const isLikelyImageSource = (value: string) => {
+  const source = value.trim();
+  if (!source) return false;
+  if (/^data:image\//i.test(source)) return true;
+
+  try {
+    const parsedUrl = new URL(source);
+    return imageExtensionPattern.test(parsedUrl.pathname);
+  } catch {
+    return imageExtensionPattern.test(source);
+  }
+};
+
+const clipboardHasImage = (clipboardData: DataTransfer) => {
+  const hasImageFile =
+    Array.from(clipboardData.items).some((item) => item.type.startsWith('image/')) ||
+    Array.from(clipboardData.files).some((file) => file.type.startsWith('image/'));
+
+  if (hasImageFile) return true;
+
+  const html = clipboardData.getData('text/html');
+  if (html.trim()) {
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const img = parsed.querySelector('img');
+    const text = parsed.body.textContent?.trim();
+    if (img && (!text || text.length <= 1)) return true;
+  }
+
+  return (
+    isLikelyImageSource(clipboardData.getData('text/uri-list')) ||
+    isLikelyImageSource(clipboardData.getData('text/plain'))
+  );
+};
+
 const getCollapsedTitleFromHtml = (html: string) => {
   const withBreaks = (html || '')
     .replace(/<br\s*\/?>/gi, '\n')
@@ -262,6 +296,10 @@ export const BlockWrapper = ({
       const length = textareaRef.current.value.length;
       textareaRef.current.setSelectionRange(length, length);
     }
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (!isFocused) setIsImageSelected(false);
   }, [isFocused]);
 
   useEffect(() => {
@@ -462,10 +500,13 @@ export const BlockWrapper = ({
   };
 
   const handleRichTextPaste = (event: ClipboardEvent<HTMLDivElement>) => {
+    if (clipboardHasImage(event.clipboardData)) return;
+
     const html = event.clipboardData.getData('text/html');
     if (!html) return;
 
     event.preventDefault();
+    event.stopPropagation();
     insertRichHtml(html);
   };
 
@@ -498,6 +539,7 @@ export const BlockWrapper = ({
   };
 
   const isNarrowViewport = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+  const showImageActions = !readOnly && (isImageSelected || isFocused);
 
   const toolbarButtonClass =
     'flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950';
@@ -647,8 +689,6 @@ export const BlockWrapper = ({
         )}
         {block.type === 'toggle_list' && <ChevronRight size={16} className="mt-0.5" />}
         {block.type === 'callout' && <Megaphone size={17} className="mt-0.5 text-amber-600" />}
-        {block.type === 'divider' && <Minus size={17} className="mt-0.5 text-slate-400" />}
-        {block.type === 'image' && <Image size={17} className="mt-0.5 text-slate-500" />}
       </div>
 
       <div className="w-full">
@@ -964,7 +1004,7 @@ export const BlockWrapper = ({
                   className="max-h-[520px] w-full object-contain bg-white"
                   draggable={false}
                 />
-                {isImageSelected && !readOnly && (
+                {showImageActions && (
                   <>
                     <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-white/95 p-1 shadow-sm ring-1 ring-slate-200">
                       <button

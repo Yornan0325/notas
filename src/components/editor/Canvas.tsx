@@ -152,6 +152,7 @@ export const Canvas = ({
   } = useCodaStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  const lastHandledPasteRef = useRef(0);
 
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -483,6 +484,8 @@ export const Canvas = ({
     const imageSource = getImageFromClipboard(event.clipboardData);
     if (imageSource) {
       event.preventDefault();
+      event.stopPropagation();
+      lastHandledPasteRef.current = event.timeStamp;
       pasteImageIntoPage(imageSource);
       return;
     }
@@ -494,6 +497,8 @@ export const Canvas = ({
     if (target.closest('input, textarea, [contenteditable="true"]')) return;
 
     event.preventDefault();
+    event.stopPropagation();
+    lastHandledPasteRef.current = event.timeStamp;
     pasteTextIntoPage(text);
   };
 
@@ -540,6 +545,7 @@ export const Canvas = ({
 
     const handleWindowPaste = (event: globalThis.ClipboardEvent) => {
       if (!event.clipboardData) return;
+      if (lastHandledPasteRef.current === event.timeStamp) return;
 
       const activeElement = document.activeElement;
       const pasteBelongsToCanvas =
@@ -616,6 +622,8 @@ export const Canvas = ({
       <input
         className="mb-2 w-full border-none bg-transparent text-5xl font-semibold tracking-tight text-slate-950 outline-none placeholder:text-slate-200 md:text-6xl"
         value={pageTitle}
+        type="text"
+        id="title"
         onChange={(e) => {
           if (!readOnly) updatePageTitle(pageId, e.target.value);
         }}
