@@ -6,6 +6,7 @@ import {
   Download,
   Expand,
   FileInput,
+  GripVertical,
   Link,
   MoreVertical,
   Plus,
@@ -124,6 +125,8 @@ export const ViewBlock = ({
   const [isCollapsible, setIsCollapsible] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
+  const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
   const viewBlockRef = useRef<HTMLDivElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const view = useMemo(() => parseViewContent(type, content), [content, type]);
@@ -201,6 +204,34 @@ export const ViewBlock = ({
     });
   };
 
+  const reorderColumn = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= view.columns.length) return;
+
+    const nextColumns = [...view.columns];
+    const [movedColumn] = nextColumns.splice(fromIndex, 1);
+    nextColumns.splice(toIndex, 0, movedColumn);
+
+    commit({
+      ...view,
+      columns: nextColumns,
+      rows: visibleRows.map((row) => {
+        const normalizedRow = view.columns.map((_, index) => row[index] || '');
+        const [movedCell] = normalizedRow.splice(fromIndex, 1);
+        normalizedRow.splice(toIndex, 0, movedCell);
+        return normalizedRow;
+      }),
+    });
+  };
+
+  const reorderRow = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= visibleRows.length) return;
+
+    const nextRows = visibleRows.map((row) => view.columns.map((_, index) => row[index] || ''));
+    const [movedRow] = nextRows.splice(fromIndex, 1);
+    nextRows.splice(toIndex, 0, movedRow);
+    commit({ ...view, rows: nextRows });
+  };
+
   const cycleTitleStyle = () => {
     setTitleStyle((current) => (current === 'large' ? 'compact' : 'large'));
     setShowMenu(false);
@@ -256,8 +287,38 @@ export const ViewBlock = ({
         <thead>
           <tr className="border-b border-slate-200 text-sm font-medium text-slate-500">
             {view.columns.map((column, columnIndex) => (
-              <th key={columnIndex} className="group/column min-w-[180px] px-2 py-2">
+              <th
+                key={columnIndex}
+                className={`group/column min-w-[180px] px-2 py-2 ${
+                  draggedColumnIndex === columnIndex ? 'bg-slate-100/70' : ''
+                }`}
+                onDragOver={(event) => {
+                  if (readOnly || draggedColumnIndex === null) return;
+                  event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (draggedColumnIndex !== null) reorderColumn(draggedColumnIndex, columnIndex);
+                  setDraggedColumnIndex(null);
+                }}
+              >
                 <div className="flex items-center gap-1">
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'move';
+                        setDraggedColumnIndex(columnIndex);
+                      }}
+                      onDragEnd={() => setDraggedColumnIndex(null)}
+                      className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                      title="Mover columna"
+                      aria-label="Mover columna"
+                    >
+                      <GripVertical size={14} />
+                    </button>
+                  )}
                   <input
                     value={column}
                     readOnly={readOnly}
@@ -269,7 +330,7 @@ export const ViewBlock = ({
                         ),
                       })
                     }
-                    className="min-w-0 flex-1 rounded bg-transparent px-1 py-1 font-medium outline-none hover:bg-slate-50 focus:bg-slate-50"
+                    className="min-w-0 flex-1 bg-transparent px-1 py-1 font-medium outline-none ring-0 focus:outline-none focus:ring-0"
                   />
                   {!readOnly && (
                     <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/column:opacity-100 focus-within:opacity-100">
@@ -314,7 +375,21 @@ export const ViewBlock = ({
         </thead>
         <tbody>
           {visibleRows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="group/row border-b border-slate-200">
+            <tr
+              key={rowIndex}
+              className={`group/row border-b border-slate-200 ${
+                draggedRowIndex === rowIndex ? 'bg-slate-100/70' : ''
+              }`}
+              onDragOver={(event) => {
+                if (readOnly || draggedRowIndex === null) return;
+                event.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (draggedRowIndex !== null) reorderRow(draggedRowIndex, rowIndex);
+                setDraggedRowIndex(null);
+              }}
+            >
               {view.columns.map((_, columnIndex) => (
                 <td key={`${rowIndex}-${columnIndex}`} className="px-2 py-2 align-top">
                   <input
@@ -323,22 +398,38 @@ export const ViewBlock = ({
                     onChange={(event) =>
                       commit(updateCellValue(view, rowIndex, columnIndex, event.target.value))
                     }
-                    className="w-full rounded bg-transparent px-1 py-1 text-sm font-medium text-slate-900 outline-none hover:bg-slate-50 focus:bg-slate-50"
+                    className="w-full bg-transparent px-1 py-1 text-sm font-medium text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0"
                     placeholder="+"
                   />
                 </td>
               ))}
               {!readOnly && (
-                <td className="w-10 px-1 py-2 align-top">
+                <td className="w-16 px-1 py-2 align-top">
+                  <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                    <button
+                      type="button"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = 'move';
+                        setDraggedRowIndex(rowIndex);
+                      }}
+                      onDragEnd={() => setDraggedRowIndex(null)}
+                      className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                      title="Mover fila"
+                      aria-label="Mover fila"
+                    >
+                      <GripVertical size={14} />
+                    </button>
                   <button
                     type="button"
                     onClick={() => removeRow(rowIndex)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover/row:opacity-100"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-600"
                     title="Eliminar fila"
                     aria-label="Eliminar fila"
                   >
                     <Trash2 size={14} />
                   </button>
+                  </div>
                 </td>
               )}
             </tr>
@@ -371,7 +462,7 @@ export const ViewBlock = ({
                 onChange={(event) =>
                   commit(updateCellValue(view, rowIndex, columnIndex, event.target.value))
                 }
-                className="mt-1 w-full rounded bg-slate-50 px-2 py-1.5 text-sm normal-case text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-slate-950"
+                className="mt-1 w-full bg-transparent px-2 py-1.5 text-sm normal-case text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0"
               />
             </label>
           ))}
@@ -411,7 +502,7 @@ export const ViewBlock = ({
               value={row[0] || ''}
               readOnly={readOnly}
               onChange={(event) => commit(updateCellValue(view, rowIndex, 0, event.target.value))}
-              className="rounded bg-transparent px-1 py-1 font-medium outline-none hover:bg-slate-50"
+              className="bg-transparent px-1 py-1 font-medium outline-none ring-0 focus:outline-none focus:ring-0"
             />
             <div className="h-3 overflow-hidden rounded-full bg-slate-100">
               <div className="h-full rounded-full bg-slate-900" style={{ width: `${value}%` }} />
@@ -420,7 +511,7 @@ export const ViewBlock = ({
               value={row[1] || ''}
               readOnly={readOnly}
               onChange={(event) => commit(updateCellValue(view, rowIndex, 1, event.target.value))}
-              className="rounded bg-transparent px-1 py-1 text-right outline-none hover:bg-slate-50"
+              className="bg-transparent px-1 py-1 text-right outline-none ring-0 focus:outline-none focus:ring-0"
             />
           </div>
         );
