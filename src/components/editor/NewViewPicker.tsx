@@ -12,11 +12,11 @@ import type { LucideIcon } from 'lucide-react';
 import type { ViewBlockType } from './viewBlocks';
 
 const options: Array<{ type: ViewBlockType; label: string; icon: LucideIcon }> = [
-  { type: 'view_table', label: 'Table', icon: Table2 },
-  { type: 'view_cards', label: 'Cards', icon: GalleryVerticalEnd },
-  { type: 'view_detail', label: 'Detail', icon: PanelRight },
-  { type: 'view_calendar', label: 'Calendar', icon: CalendarDays },
-  { type: 'view_form', label: 'Form', icon: ClipboardList },
+  { type: 'view_table', label: 'Tabla', icon: Table2 },
+  { type: 'view_cards', label: 'Tarjetas', icon: GalleryVerticalEnd },
+  { type: 'view_detail', label: 'Detalle', icon: PanelRight },
+  { type: 'view_calendar', label: 'Calendario', icon: CalendarDays },
+  { type: 'view_form', label: 'Formulario', icon: ClipboardList },
   { type: 'view_timeline', label: 'Timeline', icon: SlidersHorizontal },
   { type: 'view_chart', label: 'Chart', icon: BarChart3 },
   { type: 'view_board', label: 'Board', icon: Columns3 },
