@@ -120,6 +120,12 @@ const getBlockPlainText = (content: string) => {
 const isTextEntryBlock = (type: Block['type']) =>
   !isViewBlockType(type) && type !== 'image' && type !== 'divider';
 
+const isListBlock = (type: Block['type']) =>
+  type === 'bullet_list' ||
+  type === 'numbered_list' ||
+  type === 'todo' ||
+  type === 'toggle_list';
+
 const favoriteFallbackLabels: Partial<Record<Block['type'], string>> = {
   h1: 'Titulo favorito',
   h2: 'Seccion favorita',
@@ -182,6 +188,7 @@ export const Canvas = ({
     toggleBlockAccordion,
     toggleBlockCollapsed,
     toggleBlockFavorite,
+    setBlockActivityStatus,
     updatePageTitle,
     removeBlock,
   } = useCodaStore();
@@ -317,6 +324,16 @@ export const Canvas = ({
 
     if (e.key === 'Enter' && !e.shiftKey && !slashMenu) {
       e.preventDefault();
+      if (currentBlock && isListBlock(currentBlock.type)) {
+        if (getBlockPlainText(currentBlock.content) === '') {
+          changeBlockType(blockId, 'text');
+          return;
+        }
+
+        focusNewBlock(currentBlock.type, blockId);
+        return;
+      }
+
       focusNewBlock('text', blockId);
       return;
     }
@@ -615,11 +632,23 @@ export const Canvas = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBlockId, pageBlocks, readOnly]);
 
+  const getNumberedListNumber = (index: number) => {
+    let listNumber = 1;
+
+    for (let currentIndex = index - 1; currentIndex >= 0; currentIndex -= 1) {
+      if (pageBlocks[currentIndex]?.type !== 'numbered_list') break;
+      listNumber += 1;
+    }
+
+    return listNumber;
+  };
+
   const renderBlock = (block: Block, index: number) => (
     <BlockWrapper
       key={block.id}
       block={block}
       index={index}
+      listNumber={block.type === 'numbered_list' ? getNumberedListNumber(index) : undefined}
       isFocused={activeBlockId === block.id}
       dragPlacement={dragState?.targetId === block.id ? dragState.placement : null}
       onInsertDividerAbove={() => insertDividerAbove(block.id)}
@@ -645,6 +674,7 @@ export const Canvas = ({
       onToggleAccordion={() => toggleBlockAccordion(block.id)}
       onToggleCollapse={() => toggleBlockCollapsed(block.id)}
       onToggleFavorite={() => toggleBlockFavorite(block.id)}
+      onSetActivityStatus={(status) => setBlockActivityStatus(block.id, status)}
       onKeyDown={(e) => handleKeyDown(e, block.id)}
       onFocus={() => setActiveBlockId(block.id)}
       readOnly={readOnly}
@@ -739,7 +769,7 @@ export const Canvas = ({
         <button
           type="button"
           onClick={() => setIsFavoritePanelOpen(true)}
-          className="fixed bottom-4 right-4 z-30 inline-flex h-10 items-center gap-2 rounded-full border border-amber-200 bg-white/95 px-3 text-xs font-bold text-amber-700 shadow-lg shadow-amber-100/70 backdrop-blur md:hidden"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex h-10 items-center gap-2 rounded-full border border-amber-200 bg-white/95 px-3 text-xs font-bold text-amber-700 shadow-lg shadow-amber-100/70 backdrop-blur dark:border-amber-500/40 dark:bg-[#252525]/95 dark:text-amber-300 md:hidden"
           aria-label="Abrir favoritos"
         >
           <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
@@ -756,7 +786,7 @@ export const Canvas = ({
               aria-label="Cerrar favoritos"
               onClick={() => setIsFavoritePanelOpen(false)}
             />
-            <aside className="absolute inset-x-3 bottom-3 max-h-[46vh] rounded-xl border border-amber-200 bg-white p-3 shadow-2xl shadow-amber-100/80">
+            <aside className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] max-h-[54vh] rounded-xl border border-amber-200 bg-white p-3 shadow-2xl shadow-amber-100/80 dark:border-amber-500/40 dark:bg-[#252525]">
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />

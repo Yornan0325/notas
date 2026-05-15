@@ -39,11 +39,20 @@ export const SlashMenu = ({
     { id: 'view_table', label: 'Tabla', icon: Table2 },
     { id: 'view_cards', label: 'Cards', icon: GalleryVerticalEnd },
   ];
+  const menuHeight = 486;
+  const openUp =
+    typeof window !== 'undefined' &&
+    position.y + menuHeight > window.innerHeight - 12 &&
+    position.y > window.innerHeight / 2;
+  const menuTop =
+    typeof window !== 'undefined'
+      ? Math.max(12, openUp ? position.y - menuHeight - 36 : position.y)
+      : position.y;
 
   return (
     <div
       className="fixed z-50 w-56 rounded-md border border-slate-200 bg-white p-1 shadow-md animate-in zoom-in-95"
-      style={{ top: position.y, left: position.x }}
+      style={{ top: menuTop, left: position.x }}
     >
       <p className="mb-1 px-2 py-1 text-xs font-medium text-slate-500">
         Bloques

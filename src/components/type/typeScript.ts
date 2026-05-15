@@ -32,6 +32,7 @@ export interface Block {
   isAccordion?: boolean;
   isCollapsed?: boolean;
   isFavorite?: boolean;
+  activityStatus?: ActivityStatus;
   attachmentPath?: string;
   attachmentName?: string;
   imageWidth?: number;
@@ -40,6 +41,8 @@ export interface Block {
   ownerWorkspaceId?: string;
   sharePermission?: SharePermission;
 }
+
+export type ActivityStatus = 'pending' | 'in_progress' | 'needs_review' | 'done' | 'blocked';
 
 export interface Page {
   id: string;

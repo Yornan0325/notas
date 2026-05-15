@@ -17,6 +17,8 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronRight,
+  CircleDashed,
+  CircleDot,
   Code,
   Columns3,
   Circle,
@@ -32,8 +34,10 @@ import {
   Megaphone,
   MessageSquarePlus,
   Palette,
+  RotateCcw,
   Quote,
   Sparkles,
+  Timer,
   Strikethrough,
   Trash2,
   Type,
@@ -48,6 +52,7 @@ import { isViewBlockType, type ViewBlockType } from './viewBlocks';
 interface BlockWrapperProps {
   block: Block;
   index: number;
+  listNumber?: number;
   isFocused: boolean;
   dragPlacement: 'before' | 'after' | 'beside' | null;
   onInsertDividerAbove: () => void;
@@ -68,6 +73,7 @@ interface BlockWrapperProps {
   onToggleAccordion: () => void;
   onToggleCollapse: () => void;
   onToggleFavorite: () => void;
+  onSetActivityStatus: (status?: Block['activityStatus']) => void;
   onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
   onFocus: () => void;
   readOnly?: boolean;
@@ -141,6 +147,64 @@ const quoteStyleOptions = [
   { title: 'Cita', icon: Quote, action: 'quote' },
   { title: 'Codigo', icon: Code, action: 'code' },
   { title: 'Aviso', icon: Megaphone, action: 'callout' },
+];
+
+const activityStatusOptions: Array<{
+  value?: Block['activityStatus'];
+  label: string;
+  shortLabel: string;
+  dotClass: string;
+  chipClass: string;
+  icon: typeof CircleDashed;
+}> = [
+  {
+    value: 'pending',
+    label: 'Pendiente',
+    shortLabel: 'Pendiente',
+    dotClass: 'bg-slate-400',
+    chipClass: 'border-slate-200 bg-slate-50 text-slate-600',
+    icon: CircleDashed,
+  },
+  {
+    value: 'in_progress',
+    label: 'En proceso',
+    shortLabel: 'Proceso',
+    dotClass: 'bg-blue-500',
+    chipClass: 'border-blue-200 bg-blue-50 text-blue-700',
+    icon: Timer,
+  },
+  {
+    value: 'needs_review',
+    label: 'Falta corregir',
+    shortLabel: 'Corregir',
+    dotClass: 'bg-amber-500',
+    chipClass: 'border-amber-200 bg-amber-50 text-amber-700',
+    icon: RotateCcw,
+  },
+  {
+    value: 'done',
+    label: 'Completado',
+    shortLabel: 'Listo',
+    dotClass: 'bg-emerald-500',
+    chipClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    icon: Check,
+  },
+  {
+    value: 'blocked',
+    label: 'Bloqueado',
+    shortLabel: 'Bloqueado',
+    dotClass: 'bg-red-500',
+    chipClass: 'border-red-200 bg-red-50 text-red-700',
+    icon: CircleDot,
+  },
+  {
+    value: undefined,
+    label: 'Sin estado',
+    shortLabel: 'Sin estado',
+    dotClass: 'bg-slate-300',
+    chipClass: 'border-slate-200 bg-white text-slate-500',
+    icon: CircleDashed,
+  },
 ];
 
 const decorOptions = [
@@ -243,6 +307,7 @@ const escapeHtml = (value: string) =>
 export const BlockWrapper = ({
   block,
   index,
+  listNumber,
   isFocused,
   dragPlacement,
   onInsertDividerAbove,
@@ -263,25 +328,33 @@ export const BlockWrapper = ({
   onToggleAccordion,
   onToggleCollapse,
   onToggleFavorite,
+  onSetActivityStatus,
   onKeyDown,
   onFocus,
   readOnly = false,
 }: BlockWrapperProps) => {
   const [showSelector, setShowSelector] = useState(false);
+  const [selectorPosition, setSelectorPosition] = useState<{ left: number; top: number } | null>(null);
   const [isTodoChecked, setIsTodoChecked] = useState(false);
   const [isImageSelected, setIsImageSelected] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState<{ left: number; top: number } | null>(null);
   const [toolbarMenu, setToolbarMenu] = useState<'style' | 'decor' | 'align' | 'color' | 'highlight' | null>(null);
+  const [showActivityMenu, setShowActivityMenu] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const richTextRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageFrameRef = useRef<HTMLDivElement>(null);
+  const blockContainerRef = useRef<HTMLDivElement>(null);
   const imageWidth = block.imageWidth || 100;
   const imageAlign = block.imageAlign || 'center';
   const imageFlow = block.imageFlow || 'stack';
   const isViewBlock = isViewBlockType(block.type);
   const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code' && block.type !== 'divider';
   const canFavorite = true;
+  const canTrackActivity = !isViewBlock && block.type !== 'image' && block.type !== 'divider';
+  const activeActivityStatus = block.activityStatus
+    ? activityStatusOptions.find((item) => item.value === block.activityStatus)
+    : undefined;
   const isAccordion = canCollapse && Boolean(block.isAccordion || block.isCollapsed);
   const isCollapsed = isAccordion && Boolean(block.isCollapsed);
 
@@ -379,6 +452,67 @@ export const BlockWrapper = ({
     setToolbarPosition(null);
     setToolbarMenu(null);
   }, [isSlashMenuOpen]);
+
+  useEffect(() => {
+    if (!showSelector || typeof window === 'undefined') return;
+
+    const rect = blockContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const topSafeArea = 76;
+    const margin = 12;
+    const estimatedMenuHeight = Math.min(560, window.innerHeight - topSafeArea - margin);
+    const openUp = rect.top + estimatedMenuHeight > window.innerHeight - margin;
+    const top = openUp
+      ? Math.max(topSafeArea + margin, rect.bottom - estimatedMenuHeight)
+      : Math.max(topSafeArea + margin, rect.top + 8);
+
+    setSelectorPosition({
+      left: Math.max(margin, rect.left + 40),
+      top,
+    });
+  }, [showSelector]);
+
+  useEffect(() => {
+    if (!showSelector) return;
+
+    const closeSelector = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-block-type-selector="true"]')) return;
+      if (target && blockContainerRef.current?.contains(target)) return;
+      setShowSelector(false);
+    };
+
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setShowSelector(false);
+    };
+
+    document.addEventListener('mousedown', closeSelector);
+    document.addEventListener('touchstart', closeSelector);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeSelector);
+      document.removeEventListener('touchstart', closeSelector);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showSelector]);
+
+  useEffect(() => {
+    if (!showActivityMenu) return;
+
+    const closeActivityMenu = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-activity-status-menu="true"]')) return;
+      setShowActivityMenu(false);
+    };
+
+    document.addEventListener('mousedown', closeActivityMenu);
+    document.addEventListener('touchstart', closeActivityMenu);
+    return () => {
+      document.removeEventListener('mousedown', closeActivityMenu);
+      document.removeEventListener('touchstart', closeActivityMenu);
+    };
+  }, [showActivityMenu]);
 
   const blockShell =
     block.type === 'code'
@@ -577,13 +711,14 @@ export const BlockWrapper = ({
   const showImageActions = !readOnly && (isImageSelected || isFocused);
 
   const toolbarButtonClass =
-    'flex h-9 min-w-9 items-center justify-center gap-1 rounded-lg px-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950';
+    'flex h-10 min-w-10 items-center justify-center gap-1 rounded-lg px-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-[#343434] dark:hover:text-white md:h-9 md:min-w-9';
 
   const dropdownButtonClass =
-    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100';
+    'flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#343434] md:min-h-0';
 
   return (
     <div
+      ref={blockContainerRef}
       id={`block-${block.id}`}
       data-editor-block="true"
       className={`group relative flex items-start gap-2 rounded-md py-1 pl-10 transition-colors hover:bg-slate-50 md:-ml-14 md:pl-14 ${blockShell}`}
@@ -603,8 +738,19 @@ export const BlockWrapper = ({
       {block.isFavorite && canFavorite && (
         <div className="absolute left-1 top-2 bottom-2 w-1 rounded-full bg-amber-400 md:hidden" />
       )}
+      {block.isFavorite && canFavorite && (
+        <button
+          type="button"
+          onClick={readOnly ? undefined : onToggleFavorite}
+          className="absolute left-9 top-3 z-10 hidden h-6 w-6 items-center justify-center rounded text-slate-300 hover:bg-white md:flex"
+          title="Quitar punto favorito"
+          aria-label="Quitar punto favorito"
+        >
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+        </button>
+      )}
       {!readOnly && isFocused && canFavorite && (
-        <div className="absolute right-1 top-1 z-30 flex rounded-full border border-slate-200 bg-white/95 p-0.5 shadow-sm md:hidden">
+        <div className="absolute right-1 top-1 z-30 flex rounded-full border border-slate-200 bg-white/95 p-0.5 shadow-sm dark:border-slate-700 dark:bg-[#2b2b2b]/95 md:hidden">
           <button
             type="button"
             onMouseDown={(event) => event.preventDefault()}
@@ -629,22 +775,22 @@ export const BlockWrapper = ({
       {!readOnly && (
         <div
           className={`absolute left-1 top-1 z-20 flex flex-col items-center gap-1 transition-opacity md:left-2 md:top-2 md:flex-row md:gap-0.5 md:opacity-0 md:group-hover:opacity-100 ${
-            isFocused || showSelector ? 'opacity-100' : 'opacity-0'
+            isFocused || showSelector || block.isFavorite ? 'opacity-100' : 'opacity-0'
           }`}
         >
         <button
           type="button"
           onClick={() => setShowSelector(!showSelector)}
-          className="flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm md:h-6 md:w-6 md:cursor-grab md:text-slate-300"
+          className="flex h-8 w-8 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm dark:hover:bg-[#343434] md:h-6 md:w-6 md:cursor-grab md:text-slate-300"
           title="Cambiar tipo de bloque"
         >
           <GripVertical size={16} />
         </button>
-        {canFavorite && (
+        {canFavorite && !block.isFavorite && (
           <button
             type="button"
             onClick={onToggleFavorite}
-            className="hidden h-6 w-6 items-center justify-center rounded text-slate-300 transition-colors hover:bg-white md:flex"
+            className="hidden h-6 w-6 items-center justify-center rounded text-slate-300 transition-colors hover:bg-white dark:hover:bg-[#343434] md:flex"
             title={block.isFavorite ? 'Quitar punto favorito' : 'Marcar punto favorito'}
           >
             <span
@@ -660,7 +806,11 @@ export const BlockWrapper = ({
       )}
 
       {showSelector && !readOnly && (
-        <div className="fixed inset-x-2 bottom-20 z-[130] shadow-lg animate-in slide-in-from-bottom-2 duration-200 md:absolute md:bottom-auto md:left-10 md:top-0 md:inset-x-auto md:z-[70] md:slide-in-from-left-2">
+        <div
+          data-block-type-selector="true"
+          className="fixed inset-x-2 bottom-20 z-[130] animate-in fade-in zoom-in-95 duration-150 md:inset-auto md:z-[70]"
+          style={isNarrowViewport ? undefined : selectorPosition || undefined}
+        >
           <BlockTypeSelector
             currentType={block.type}
             isAccordion={isAccordion}
@@ -683,6 +833,10 @@ export const BlockWrapper = ({
               onChangeType('text');
               setShowSelector(false);
             }}
+            onSetActivityStatus={(status) => {
+              onSetActivityStatus(status);
+              setShowSelector(false);
+            }}
             onCopyLink={() => {
               navigator.clipboard?.writeText(`${window.location.href.split('#')[0]}#block-${block.id}`);
               setShowSelector(false);
@@ -695,7 +849,7 @@ export const BlockWrapper = ({
         </div>
       )}
 
-      <div className="flex min-w-[22px] justify-center pt-2.5 text-slate-400 md:min-w-[28px]">
+      <div className="flex min-h-7 min-w-[22px] items-center justify-center text-slate-400 md:min-w-[28px]">
         {block.type === 'todo' && (
           <button
             type="button"
@@ -708,20 +862,77 @@ export const BlockWrapper = ({
           </button>
         )}
         {block.type === 'bullet_list' && !hasStructuredListContent(block.content) && (
-          <span className="mt-0.5 text-xl leading-none">-</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
         )}
         {block.type === 'numbered_list' && !hasStructuredListContent(block.content) && (
-          <span className="text-sm font-semibold text-slate-400">{index + 1}.</span>
+          <span className="text-lg font-medium leading-7 text-slate-400">{listNumber ?? index + 1}.</span>
         )}
-        {block.type === 'toggle_list' && <ChevronRight size={16} className="mt-0.5" />}
-        {block.type === 'callout' && <Megaphone size={17} className="mt-0.5 text-amber-600" />}
+        {block.type === 'toggle_list' && <ChevronRight size={16} />}
+        {block.type === 'callout' && <Megaphone size={17} className="text-amber-600" />}
       </div>
 
-      <div className="w-full">
+      <div className="relative w-full">
+        {canTrackActivity && (
+          <div
+            data-activity-status-menu="true"
+            className={`absolute -left-8 top-1 flex items-center md:-left-36 md:top-0 ${
+              showActivityMenu ? 'z-[140]' : 'z-20'
+            } ${
+              block.activityStatus || showActivityMenu
+                ? 'opacity-100'
+                : 'pointer-events-none opacity-0'
+            } transition-opacity`}
+          >
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setShowActivityMenu((value) => !value);
+              }}
+              className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-[0px] font-semibold leading-none transition-colors md:h-6 md:w-auto md:gap-1.5 md:px-2 md:text-[11px] ${
+                activeActivityStatus?.chipClass || 'border-slate-200 bg-white text-slate-500'
+              } dark:border-slate-700 dark:bg-[#2b2b2b] dark:text-slate-200`}
+              title="Cambiar estado de actividad"
+            >
+              <span className={`h-2 w-2 rounded-full md:h-1.5 md:w-1.5 ${activeActivityStatus?.dotClass || 'bg-slate-300'}`} />
+              <span className="hidden md:inline">{activeActivityStatus?.shortLabel || 'Estado'}</span>
+            </button>
+
+            {showActivityMenu && (
+              <div className="absolute left-0 top-7 z-[150] max-h-[min(64vh,320px)] w-52 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-[#252525] sm:w-56 md:left-0">
+                <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  Estado
+                </p>
+                {activityStatusOptions
+                  .filter((status) => status.value || block.activityStatus)
+                  .map((status) => (
+                  <button
+                    key={status.label}
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onSetActivityStatus(status.value);
+                      setShowActivityMenu(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-[#343434] dark:hover:text-white"
+                  >
+                    <span className={`h-2 w-2 rounded-full ${status.dotClass}`} />
+                    <span className="flex-1">{status.label}</span>
+                    {block.activityStatus === status.value && <Check size={14} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {toolbarPosition && !readOnly && (
           <div
             data-rich-text-toolbar="true"
-            className="fixed inset-x-1 bottom-2 z-[120] flex max-w-[calc(100vw-0.5rem)] items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-slate-600 shadow-xl md:inset-auto md:bottom-auto md:max-w-none md:-translate-x-1/2 md:gap-1 md:overflow-visible md:rounded-full md:px-3 md:py-2"
+            className="fixed inset-x-1 bottom-2 z-[120] flex max-w-[calc(100vw-0.5rem)] items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-slate-600 shadow-xl dark:border-slate-700 dark:bg-[#252525] md:inset-auto md:bottom-auto md:max-w-none md:-translate-x-1/2 md:gap-1 md:overflow-visible md:rounded-full md:px-3 md:py-2"
             style={isNarrowViewport ? undefined : { left: toolbarPosition.left, top: toolbarPosition.top }}
             onMouseDown={(event) => event.preventDefault()}
           >
