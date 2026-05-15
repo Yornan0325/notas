@@ -5,7 +5,7 @@ import { useCodaStore } from '../../store/useCodaStore';
 import { BlockWrapper } from './BlockWrapper';
 import { SlashMenu } from './SlashMenu';
 import type { Block, Page } from '../type/typeScript';
-import { getDefaultViewContent, isViewBlockType, stringifyViewContent, type ViewBlockType } from './viewBlocks';
+import { getDefaultViewContent, isViewBlockType, parseViewContent, stringifyViewContent, type ViewBlockType } from './viewBlocks';
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -128,10 +128,33 @@ const favoriteFallbackLabels: Partial<Record<Block['type'], string>> = {
   callout: 'Aviso favorito',
   todo: 'Tarea favorita',
   text: 'Texto favorito',
+  code: 'Codigo favorito',
+  divider: 'Separador favorito',
+  image: 'Imagen favorita',
+  view_table: 'Tabla favorita',
+  view_cards: 'Cards favorito',
+  view_detail: 'Detalle favorito',
+  view_calendar: 'Calendario favorito',
+  view_form: 'Formulario favorito',
+  view_timeline: 'Timeline favorito',
+  view_chart: 'Grafico favorito',
+  view_board: 'Tablero favorito',
 };
 
 const placeholdersForFavorite = (type: Block['type']) =>
   favoriteFallbackLabels[type] || 'Bloque favorito';
+
+const getFavoriteLabel = (block: Block) => {
+  if (isViewBlockType(block.type)) {
+    return parseViewContent(block.type, block.content).title || placeholdersForFavorite(block.type);
+  }
+
+  if (block.type === 'image') {
+    return block.attachmentName || placeholdersForFavorite(block.type);
+  }
+
+  return getBlockPlainText(block.content) || placeholdersForFavorite(block.type);
+};
 
 export const Canvas = ({
   pageId,
@@ -215,8 +238,8 @@ export const Canvas = ({
     return rows;
   }, [pageBlocks]);
 
-  const favoriteTextBlocks = useMemo(
-    () => pageBlocks.filter((block) => block.isFavorite && isTextEntryBlock(block.type)),
+  const favoriteBlocks = useMemo(
+    () => pageBlocks.filter((block) => block.isFavorite),
     [pageBlocks]
   );
 
@@ -682,7 +705,7 @@ export const Canvas = ({
         </p>
       )}
 
-      {favoriteTextBlocks.length > 0 && (
+      {favoriteBlocks.length > 0 && (
         <>
         <aside className="fixed right-4 top-24 z-30 hidden w-56 rounded-lg border border-amber-200 bg-white/95 p-2 shadow-lg shadow-amber-100/70 backdrop-blur md:block">
           <div className="mb-2 flex items-center gap-2 px-1.5">
@@ -692,15 +715,15 @@ export const Canvas = ({
             </div>
           </div>
           <div className="max-h-[calc(100vh-8rem)] space-y-1 overflow-y-auto">
-            {favoriteTextBlocks.map((block) => {
-              const text = getBlockPlainText(block.content) || placeholdersForFavorite(block.type);
+            {favoriteBlocks.map((block) => {
+              const text = getFavoriteLabel(block);
 
               return (
                 <button
                   key={block.id}
                   type="button"
                   onClick={() => scrollToBlock(block.id)}
-                  className="group flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-600 transition-colors hover:bg-amber-50 hover:text-slate-950"
+                  className="group flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-600 transition-colors hover:text-slate-950"
                   title={text}
                 >
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
@@ -721,7 +744,7 @@ export const Canvas = ({
         >
           <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] leading-none">
-            {favoriteTextBlocks.length}
+            {favoriteBlocks.length}
           </span>
         </button>
 
@@ -748,8 +771,8 @@ export const Canvas = ({
                 </button>
               </div>
               <div className="max-h-[34vh] space-y-1 overflow-y-auto">
-                {favoriteTextBlocks.map((block) => {
-                  const text = getBlockPlainText(block.content) || placeholdersForFavorite(block.type);
+                {favoriteBlocks.map((block) => {
+                  const text = getFavoriteLabel(block);
 
                   return (
                     <button

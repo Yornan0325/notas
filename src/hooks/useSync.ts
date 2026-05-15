@@ -53,7 +53,7 @@ export const useSync = () => {
     try {
       const auth = getFirebaseAuth();
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        console.log('[Sync] Auth state changed:', currentUser?.email ?? 'no user');
+        // console.log('[Sync] Auth state changed:', currentUser?.email ?? 'no user');
         if (currentUser?.email !== user?.email) {
           clearWorkspace();
           hasLoadedRef.current = false;
@@ -77,11 +77,11 @@ export const useSync = () => {
 
     const loadRemoteWorkspace = async () => {
       hasLoadedRef.current = true;
-      console.log('[Sync] Loading workspace for:', user.email);
+      // console.log('[Sync] Loading workspace for:', user.email);
       try {
         const wsId = user.email!;
         const remoteWorkspace = await loadWorkspaceFromFirebase(wsId);
-        console.log('[Sync] Remote data:', { pages: remoteWorkspace.pages.length, blocks: remoteWorkspace.blocks.length });
+        // console.log('[Sync] Remote data:', { pages: remoteWorkspace.pages.length, blocks: remoteWorkspace.blocks.length });
 
         const remotePages: Page[] = remoteWorkspace.pages.map(p => ({ ...p, synced: true }));
         const remoteBlocks: Block[] = remoteWorkspace.blocks.map(b => ({ ...b, synced: true }));
@@ -108,7 +108,6 @@ export const useSync = () => {
         const currentStore = useCodaStore.getState();
         const unsyncedPages = currentStore.pages.filter(p => !p.synced);
         const unsyncedBlocks = currentStore.blocks.filter(b => !b.synced);
-        console.log('[Sync] Preserving unsynced local items:', { pages: unsyncedPages.length, blocks: unsyncedBlocks.length });
 
         const finalPages: Page[] = [...allPages];
         unsyncedPages.forEach(pp => {
@@ -147,13 +146,11 @@ export const useSync = () => {
           ownerWorkspaceId: b.ownerWorkspaceId,
           sharePermission: b.sharePermission,
         }]));
-        console.log('[Sync] Workspace ready:', { pages: finalPages.length, blocks: finalBlocks.length });
       } catch (error) {
         console.error('[Sync] Failed to load workspace:', error);
         toast.error('No se pudo cargar el workspace');
       } finally {
         setLoading(false);
-        console.log('[Sync] Loading complete, sync enabled.');
       }
     };
 

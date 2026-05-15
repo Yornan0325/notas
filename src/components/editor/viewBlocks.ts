@@ -74,7 +74,7 @@ export const parseViewContent = (type: ViewBlockType, content: string): ViewBloc
     const parsed = JSON.parse(content) as Partial<ViewBlockContent>;
     if (Array.isArray(parsed.columns) && Array.isArray(parsed.rows)) {
       return {
-        title: parsed.title?.trim() || getViewLabel(type),
+        title: typeof parsed.title === 'string' ? parsed.title : getViewLabel(type),
         columns: parsed.columns.length ? parsed.columns : getDefaultViewContent(type).columns,
         rows: parsed.rows.length ? parsed.rows : getDefaultViewContent(type).rows,
       };

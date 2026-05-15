@@ -281,7 +281,7 @@ export const BlockWrapper = ({
   const imageFlow = block.imageFlow || 'stack';
   const isViewBlock = isViewBlockType(block.type);
   const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code' && block.type !== 'divider';
-  const canFavorite = !isViewBlock && block.type !== 'image' && block.type !== 'divider' && block.type !== 'code';
+  const canFavorite = true;
   const isAccordion = canCollapse && Boolean(block.isAccordion || block.isCollapsed);
   const isCollapsed = isAccordion && Boolean(block.isCollapsed);
 
@@ -657,17 +657,6 @@ export const BlockWrapper = ({
           </button>
         )}
         </div>
-      )}
-
-      {block.isFavorite && canFavorite && (
-        <button
-          type="button"
-          onClick={readOnly ? undefined : onToggleFavorite}
-          className="absolute left-8 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-amber-50 ring-1 ring-amber-200 md:flex"
-          title="Punto favorito"
-        >
-          <span className="h-2 w-2 rounded-full bg-amber-400" />
-        </button>
       )}
 
       {showSelector && !readOnly && (
