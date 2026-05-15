@@ -7,7 +7,14 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      { "regex": "^(?!/assets/|/favicon\\.svg$|/icons\\.svg$).*$", "destination": "/index.html" }
+      { "source": "/", "destination": "/index.html" },
+      { "source": "/login", "destination": "/index.html" },
+      { "source": "/register", "destination": "/index.html" },
+      { "source": "/projects", "destination": "/index.html" },
+      { "source": "/documents", "destination": "/index.html" },
+      { "source": "/shares", "destination": "/index.html" },
+      { "source": "/settings", "destination": "/index.html" },
+      { "source": "/doc/**", "destination": "/index.html" }
     ],
     "headers": [
       {
