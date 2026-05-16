@@ -774,19 +774,11 @@ export const BlockWrapper = ({
       )}
       {!readOnly && (
         <div
-          className={`absolute left-1 top-1 z-20 flex flex-col items-center gap-1 transition-opacity md:left-2 md:top-2 md:flex-row md:gap-0.5 md:opacity-0 md:group-hover:opacity-100 ${
+          className={`absolute left-1 top-1 z-[80] flex flex-col items-center gap-1 transition-opacity md:left-2 md:top-2 md:flex-row md:gap-0.5 md:opacity-0 md:group-hover:opacity-100 ${
             isFocused || showSelector || block.isFavorite ? 'opacity-100' : 'opacity-0'
           }`}
         >
-        <button
-          type="button"
-          onClick={() => setShowSelector(!showSelector)}
-          className="flex h-8 w-8 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm dark:hover:bg-[#343434] md:h-6 md:w-6 md:cursor-grab md:text-slate-300"
-          title="Cambiar tipo de bloque"
-        >
-          <GripVertical size={16} />
-        </button>
-        {canFavorite && !block.isFavorite && (
+            {canFavorite && !block.isFavorite && (
           <button
             type="button"
             onClick={onToggleFavorite}
@@ -802,6 +794,15 @@ export const BlockWrapper = ({
             />
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setShowSelector(!showSelector)}
+          className="flex h-8 w-8 items-center justify-center rounded text-slate-400 transition-colors hover:bg-white hover:text-slate-600 hover:shadow-sm dark:hover:bg-[#343434] md:h-6 md:w-6 md:cursor-grab md:text-slate-300"
+          title="Cambiar tipo de bloque"
+        >
+          <GripVertical size={16} />
+        </button>
+       
         </div>
       )}
 
@@ -875,8 +876,8 @@ export const BlockWrapper = ({
         {canTrackActivity && (
           <div
             data-activity-status-menu="true"
-            className={`absolute -left-8 top-1 flex items-center md:-left-36 md:top-0 ${
-              showActivityMenu ? 'z-[140]' : 'z-20'
+            className={`absolute -left-20 top-1 flex items-center md:-left-48 md:top-0 ${
+              showActivityMenu ? 'z-[140]' : 'z-10'
             } ${
               block.activityStatus || showActivityMenu
                 ? 'opacity-100'
