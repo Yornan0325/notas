@@ -742,7 +742,7 @@ export const BlockWrapper = ({
         <button
           type="button"
           onClick={readOnly ? undefined : onToggleFavorite}
-          className="absolute left-9 top-3 z-10 hidden h-6 w-6 items-center justify-center rounded text-slate-300 hover:bg-white md:flex"
+          className="absolute left-9 top-2 z-10 hidden h-6 w-6 items-center justify-center rounded text-slate-300 hover:bg-white md:flex"
           title="Quitar punto favorito"
           aria-label="Quitar punto favorito"
         >
@@ -876,7 +876,7 @@ export const BlockWrapper = ({
         {canTrackActivity && (
           <div
             data-activity-status-menu="true"
-            className={`absolute -left-20 top-1 flex items-center justify-center md:-left-40 md:top-0 ${
+            className={`absolute -left-20 top-1 flex items-center justify-center md:-left-40 md:top-2 ${
               showActivityMenu ? 'z-[140]' : 'z-10'
             } ${
               block.activityStatus || showActivityMenu
