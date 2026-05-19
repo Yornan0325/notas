@@ -876,7 +876,7 @@ export const BlockWrapper = ({
         {canTrackActivity && (
           <div
             data-activity-status-menu="true"
-            className={`absolute -left-20 top-1 flex items-center md:-left-48 md:top-0 ${
+            className={`absolute -left-20 top-1 flex items-center justify-center md:-left-40 md:top-0 ${
               showActivityMenu ? 'z-[140]' : 'z-10'
             } ${
               block.activityStatus || showActivityMenu
