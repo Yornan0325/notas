@@ -6,6 +6,7 @@ import { BlockWrapper } from './BlockWrapper';
 import { SlashMenu } from './SlashMenu';
 import type { Block, Page } from '../type/typeScript';
 import { getDefaultViewContent, isViewBlockType, parseViewContent, stringifyViewContent, type ViewBlockType } from './viewBlocks';
+import { GitCommitVertical, ListTodo, Star } from 'lucide-react';
 
 const readFileAsDataUrl = (file: File) =>
   new Promise<string>((resolve, reject) => {
@@ -167,6 +168,52 @@ const getFavoriteLabel = (block: Block) => {
   return getBlockPlainText(block.content) || placeholdersForFavorite(block.type);
 };
 
+const activityStatusMeta: Record<NonNullable<Block['activityStatus']>, {
+  label: string;
+  shortLabel: string;
+  dotClass: string;
+  textClass: string;
+}> = {
+  pending: {
+    label: 'Pendiente',
+    shortLabel: 'Pend.',
+    dotClass: 'bg-slate-400',
+    textClass: 'text-slate-600 dark:text-slate-300',
+  },
+  in_progress: {
+    label: 'En proceso',
+    shortLabel: 'Proceso',
+    dotClass: 'bg-blue-500',
+    textClass: 'text-blue-700 dark:text-blue-300',
+  },
+  needs_review: {
+    label: 'Falta corregir',
+    shortLabel: 'Corregir',
+    dotClass: 'bg-amber-500',
+    textClass: 'text-amber-700 dark:text-amber-300',
+  },
+  done: {
+    label: 'Completado',
+    shortLabel: 'Listo',
+    dotClass: 'bg-emerald-500',
+    textClass: 'text-emerald-700 dark:text-emerald-300',
+  },
+  blocked: {
+    label: 'Bloqueado',
+    shortLabel: 'Bloq.',
+    dotClass: 'bg-red-500',
+    textClass: 'text-red-700 dark:text-red-300',
+  },
+};
+
+const activityStatusOrder: Array<NonNullable<Block['activityStatus']>> = [
+  'blocked',
+  'needs_review',
+  'in_progress',
+  'pending',
+  'done',
+];
+
 export const Canvas = ({
   pageId,
   pageTitle,
@@ -213,6 +260,7 @@ export const Canvas = ({
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [isFavoritePanelOpen, setIsFavoritePanelOpen] = useState(false);
+  const [isStatusPanelOpen, setIsStatusPanelOpen] = useState(false);
   const [dragState, setDragState] = useState<{
     blockId: string;
     targetId: string | null;
@@ -374,6 +422,22 @@ export const Canvas = ({
   const favoriteBlocks = useMemo(
     () => pageBlocks.filter((block) => block.isFavorite),
     [pageBlocks]
+  );
+
+  const statusBlocks = useMemo(
+    () => pageBlocks.filter((block) => block.activityStatus),
+    [pageBlocks]
+  );
+
+  const statusBlocksByStatus = useMemo(
+    () =>
+      activityStatusOrder
+        .map((status) => ({
+          status,
+          blocks: statusBlocks.filter((block) => block.activityStatus === status),
+        }))
+        .filter((group) => group.blocks.length > 0),
+    [statusBlocks]
   );
 
   const scrollToBlock = (blockId: string) => {
@@ -858,20 +922,24 @@ export const Canvas = ({
 
       {pageBlocks.length === 0 && (
         <p className="mb-12 text-lg text-slate-400">
-          Anade una descripcion o empieza a escribir...
+          Añade una descripción o empieza a escribir...
         </p>
       )}
 
       {favoriteBlocks.length > 0 && (
         <>
-        <aside className="fixed right-4 top-24 z-30 hidden w-56 rounded-lg border border-amber-200 bg-white/95 p-2 shadow-lg shadow-amber-100/70 backdrop-blur md:block">
+        <aside className={`fixed right-4 z-30 hidden w-56 rounded-lg border border-amber-200 bg-white/95 p-2 shadow-lg shadow-amber-100/70 backdrop-blur dark:border-amber-500/40 dark:bg-[#252525]/95 dark:shadow-black/30 md:block ${
+          statusBlocks.length > 0 ? 'top-[26rem]' : 'top-24'
+        }`}>
           <div className="mb-2 flex items-center gap-2 px-1.5">
             <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+            <Star className="text-amber-500" size={16} />
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Favoritos</p>
             </div>
           </div>
-          <div className="max-h-[calc(100vh-8rem)] space-y-1 overflow-y-auto">
+          <div className={`space-y-1 overflow-y-auto ${
+            statusBlocks.length > 0 ? 'max-h-[calc(100vh-28rem)]' : 'max-h-[calc(100vh-8rem)]'
+          }`}>
             {favoriteBlocks.map((block) => {
               const text = getFavoriteLabel(block);
 
@@ -953,6 +1021,134 @@ export const Canvas = ({
             </aside>
           </div>
         )}
+        </>
+      )}
+
+      {statusBlocks.length > 0 && (
+        <>
+          <aside className="fixed right-4 top-24 z-30 hidden max-h-[18rem] w-60 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-lg shadow-slate-200/70 backdrop-blur dark:border-slate-700 dark:bg-[#252525]/95 dark:shadow-black/30 md:block">
+            <div className="mb-2 flex items-center justify-between px-1.5">
+              <div className="flex items-center gap-2">
+                {/* <span className="h-2.5 w-2.5 rounded-full bg-blue-500" /> */}
+                <GitCommitVertical className="text-blue-500" size={16} />
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Estados</p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-[#343434] dark:text-slate-300">
+                {statusBlocks.length}
+              </span>
+            </div>
+            <div className="max-h-[13.5rem] space-y-3 overflow-y-auto pr-1">
+              {statusBlocksByStatus.map(({ status, blocks }) => {
+                const meta = activityStatusMeta[status];
+
+                return (
+                  <div key={status} className="space-y-1">
+                    <div className="flex items-center gap-2 px-1.5">
+                      <span className={`h-2 w-2 rounded-full ${meta.dotClass}`} />
+                      <p className={`text-[11px] font-bold uppercase tracking-wide ${meta.textClass}`}>{meta.label}</p>
+                      <span className="ml-auto text-[10px] font-semibold text-slate-400">{blocks.length}</span>
+                    </div>
+                    {blocks.map((block) => {
+                      const text = getFavoriteLabel(block);
+
+                      return (
+                        <button
+                          key={block.id}
+                          type="button"
+                          onClick={() => scrollToBlock(block.id)}
+                          className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs text-slate-600 transition-colors hover:text-slate-950 dark:text-slate-300 dark:hover:bg-[#343434] dark:hover:text-white"
+                          title={text}
+                        >
+                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${meta.dotClass}`} />
+                          <span className="min-w-0 overflow-hidden text-ellipsis font-medium leading-snug [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
+                            {text}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+
+          <button
+            type="button"
+            onClick={() => setIsStatusPanelOpen(true)}
+            className={`fixed right-4 z-30 inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 text-xs font-bold text-slate-700 shadow-lg shadow-slate-200/70 backdrop-blur dark:border-slate-700 dark:bg-[#252525]/95 dark:text-slate-200 md:hidden ${
+              favoriteBlocks.length > 0
+                ? 'bottom-[calc(4rem+env(safe-area-inset-bottom))]'
+                : 'bottom-[calc(1rem+env(safe-area-inset-bottom))]'
+            }`}
+            aria-label="Abrir estados"
+          >
+            <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] leading-none dark:bg-[#343434]">
+              {statusBlocks.length}
+            </span>
+          </button>
+
+          {isStatusPanelOpen && (
+            <div className="fixed inset-0 z-40 md:hidden">
+              <button
+                type="button"
+                className="absolute inset-0 bg-slate-950/20"
+                aria-label="Cerrar estados"
+                onClick={() => setIsStatusPanelOpen(false)}
+              />
+              <aside className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] max-h-[58vh] rounded-xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-200/80 dark:border-slate-700 dark:bg-[#252525]">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Estados</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsStatusPanelOpen(false)}
+                    className="rounded-full px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#343434]"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+                <div className="max-h-[46vh] space-y-3 overflow-y-auto">
+                  {statusBlocksByStatus.map(({ status, blocks }) => {
+                    const meta = activityStatusMeta[status];
+
+                    return (
+                      <div key={status} className="space-y-1">
+                        <div className="flex items-center gap-2 px-1">
+                          <span className={`h-2 w-2 rounded-full ${meta.dotClass}`} />
+                          <p className={`text-[11px] font-bold uppercase tracking-wide ${meta.textClass}`}>{meta.label}</p>
+                          <span className="ml-auto text-[10px] font-semibold text-slate-400">{blocks.length}</span>
+                        </div>
+                        {blocks.map((block) => {
+                          const text = getFavoriteLabel(block);
+
+                          return (
+                            <button
+                              key={block.id}
+                              type="button"
+                              onClick={() => {
+                                scrollToBlock(block.id);
+                                setIsStatusPanelOpen(false);
+                              }}
+                              className="flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-[#343434] dark:hover:text-white"
+                              title={text}
+                            >
+                              <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${meta.dotClass}`} />
+                              <span className="min-w-0 overflow-hidden text-ellipsis font-medium leading-snug [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">
+                                {text}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </aside>
+            </div>
+          )}
         </>
       )}
 
