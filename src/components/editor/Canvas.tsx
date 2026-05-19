@@ -19,6 +19,11 @@ type PastedImageSource =
   | { kind: 'file'; file: File }
   | { kind: 'url'; url: string; name: string };
 
+type EditorSnapshot = {
+  blocks: Block[];
+  pages: Page[];
+};
+
 const imageExtensionPattern = /\.(apng|avif|gif|jpe?g|png|svg|webp|bmp|ico|tiff?)(\?.*)?$/i;
 
 const isLikelyImageUrl = (value: string) => {
@@ -178,6 +183,7 @@ export const Canvas = ({
 }) => {
   const {
     blocks,
+    pages,
     addBlock,
     addBlockAtStart,
     updateBlock,
@@ -190,11 +196,19 @@ export const Canvas = ({
     toggleBlockFavorite,
     setBlockActivityStatus,
     updatePageTitle,
+    setBlocks,
+    setPages,
     removeBlock,
   } = useCodaStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const lastHandledPasteRef = useRef(0);
+  const undoStackRef = useRef<EditorSnapshot[]>([]);
+  const redoStackRef = useRef<EditorSnapshot[]>([]);
+  const lastSnapshotRef = useRef<EditorSnapshot | null>(null);
+  const lastSnapshotSignatureRef = useRef('');
+  const restoreTargetSignatureRef = useRef<string | null>(null);
+  const skipNextHistoryRecordRef = useRef(false);
 
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -218,6 +232,118 @@ export const Canvas = ({
         .map((item) => item.block),
     [blocks, pageId]
   );
+
+  const createEditorSnapshot = (): EditorSnapshot => ({
+    blocks,
+    pages,
+  });
+
+  const getSnapshotSignature = (snapshot: EditorSnapshot) =>
+    JSON.stringify({
+      blocks: snapshot.blocks,
+      pages: snapshot.pages,
+    });
+
+  const restoreSnapshot = (snapshot: EditorSnapshot, redoSnapshot?: EditorSnapshot) => {
+    const targetSignature = getSnapshotSignature(snapshot);
+    restoreTargetSignatureRef.current = targetSignature;
+    if (redoSnapshot) redoStackRef.current = [...redoStackRef.current.slice(-99), redoSnapshot];
+    setBlocks(snapshot.blocks);
+    setPages(snapshot.pages);
+  };
+
+  const pushCurrentSnapshotToUndo = () => {
+    const snapshot = createEditorSnapshot();
+    const signature = getSnapshotSignature(snapshot);
+    const lastUndoSnapshot = undoStackRef.current[undoStackRef.current.length - 1];
+    const lastUndoSignature = lastUndoSnapshot ? getSnapshotSignature(lastUndoSnapshot) : '';
+
+    if (signature !== lastUndoSignature) {
+      undoStackRef.current = [...undoStackRef.current.slice(-99), snapshot];
+    }
+
+    redoStackRef.current = [];
+    lastSnapshotRef.current = snapshot;
+    lastSnapshotSignatureRef.current = signature;
+    skipNextHistoryRecordRef.current = true;
+  };
+
+  useEffect(() => {
+    const snapshot = createEditorSnapshot();
+    const signature = getSnapshotSignature(snapshot);
+
+    if (restoreTargetSignatureRef.current) {
+      lastSnapshotRef.current = snapshot;
+      lastSnapshotSignatureRef.current = signature;
+      if (signature === restoreTargetSignatureRef.current) {
+        restoreTargetSignatureRef.current = null;
+      }
+      return;
+    }
+
+    if (skipNextHistoryRecordRef.current) {
+      skipNextHistoryRecordRef.current = false;
+      lastSnapshotRef.current = snapshot;
+      lastSnapshotSignatureRef.current = signature;
+      return;
+    }
+
+    if (!lastSnapshotRef.current) {
+      lastSnapshotRef.current = snapshot;
+      lastSnapshotSignatureRef.current = signature;
+      return;
+    }
+
+    if (signature === lastSnapshotSignatureRef.current) return;
+
+    undoStackRef.current = [...undoStackRef.current.slice(-99), lastSnapshotRef.current];
+    redoStackRef.current = [];
+    lastSnapshotRef.current = snapshot;
+    lastSnapshotSignatureRef.current = signature;
+  }, [blocks, pages]);
+
+  useEffect(() => {
+    if (readOnly) return;
+
+    const handleHistoryKeyDown = (event: globalThis.KeyboardEvent) => {
+      const isUndoKey =
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === 'z' &&
+        !event.shiftKey;
+      const isRedoKey =
+        (event.ctrlKey || event.metaKey) &&
+        (event.key.toLowerCase() === 'y' ||
+          (event.key.toLowerCase() === 'z' && event.shiftKey));
+
+      if (!isUndoKey && !isRedoKey) return;
+
+      const activeElement = document.activeElement as HTMLElement | null;
+      const isEditableOutsideCanvas =
+        activeElement &&
+        !canvasRef.current?.contains(activeElement) &&
+        Boolean(activeElement.closest('input, textarea, [contenteditable="true"]'));
+
+      if (isEditableOutsideCanvas) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (isUndoKey) {
+        const previousSnapshot = undoStackRef.current.pop();
+        if (!previousSnapshot) return;
+        restoreSnapshot(previousSnapshot, createEditorSnapshot());
+        return;
+      }
+
+      const nextSnapshot = redoStackRef.current.pop();
+      if (!nextSnapshot) return;
+      undoStackRef.current = [...undoStackRef.current.slice(-99), createEditorSnapshot()];
+      restoreSnapshot(nextSnapshot);
+    };
+
+    document.addEventListener('keydown', handleHistoryKeyDown, true);
+    return () => document.removeEventListener('keydown', handleHistoryKeyDown, true);
+  }, [blocks, pages, readOnly, setBlocks, setPages]);
 
   const blockRows = useMemo(() => {
     const rows: Array<
@@ -656,6 +782,7 @@ export const Canvas = ({
       onRemove={() => {
         const currentIndex = pageBlocks.findIndex((item) => item.id === block.id);
         const nextFocus = pageBlocks[currentIndex + 1]?.id || pageBlocks[currentIndex - 1]?.id || null;
+        pushCurrentSnapshotToUndo();
         removeBlock(block.id);
         setActiveBlockId(nextFocus);
       }}
