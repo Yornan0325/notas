@@ -81,11 +81,11 @@ interface BlockWrapperProps {
 }
 
 const typeStyles: Record<Block['type'], string> = {
-  h1: 'mt-7 mb-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100',
-  h2: 'mt-6 mb-2 text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100',
-  h3: 'mt-4 mb-1 text-2xl font-semibold text-slate-800 dark:text-slate-200',
+  h1: 'text-4xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100',
+  h2: 'text-3xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-100',
+  h3: 'text-2xl font-semibold leading-tight text-slate-800 dark:text-slate-200',
   text: 'text-lg font-normal text-slate-700 dark:text-slate-300',
-  title: 'mt-7 mb-2 text-4xl font-semibold tracking-tight text-slate-950 dark:text-slate-100',
+  title: 'text-4xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100',
   todo: 'text-lg font-normal text-slate-700 dark:text-slate-300',
   bullet_list: 'text-lg font-normal text-slate-700 dark:text-slate-300',
   numbered_list: 'text-lg font-normal text-slate-700 dark:text-slate-300',
@@ -110,11 +110,11 @@ const getControlsTopClass = (type: Block['type']): string => {
   switch (type) {
     case 'h1':
     case 'title':
-      return 'md:top-9';
+      return 'md:top-3';
     case 'h2':
-      return 'md:top-7';
+      return 'md:top-2.5';
     case 'h3':
-      return 'md:top-5';
+      return 'md:top-2';
     case 'card_notice':
       return 'md:top-2';
     case 'callout':

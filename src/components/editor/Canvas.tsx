@@ -698,13 +698,19 @@ export const Canvas = ({
   const pasteTextIntoPage = (text: string) => {
     if (readOnly) return;
 
+    const normalizedText = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/^\n+|\n+$/g, '');
+    if (!normalizedText.trim()) return;
+
     const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
     const targetBlockId =
       activeBlock && isTextEntryBlock(activeBlock.type) && getBlockPlainText(activeBlock.content) === ''
         ? activeBlock.id
         : addBlock('text', pageId, activeBlock?.id || pageBlocks[pageBlocks.length - 1]?.id);
 
-    updateBlock(targetBlockId, text.replace(/\n/g, '<br>'));
+    updateBlock(targetBlockId, normalizedText.replace(/\n/g, '<br>'));
     setActiveBlockId(targetBlockId);
   };
 
