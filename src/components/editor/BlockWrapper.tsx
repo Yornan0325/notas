@@ -826,7 +826,7 @@ export const BlockWrapper = ({
           className={`absolute left-1 top-1 z-[80] flex flex-col items-center gap-1 transition-opacity ${getControlsTopClass(
             block.type
           )} md:flex-row md:gap-0.5 md:opacity-0 md:group-hover:opacity-100 ${
-            block.type === 'card_notice' || block.type === 'callout' || block.type === 'code' ? 'md:left-1' : 'md:left-2'
+            block.type === 'card_notice' || block.type === 'callout' || block.type === 'code' ? 'md:-left-5' : 'md:-left-4'
           } ${
             isFocused || showSelector || block.isFavorite ? 'opacity-100' : 'opacity-0'
           }`}
