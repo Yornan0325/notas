@@ -122,7 +122,7 @@ const getControlsTopClass = (type: Block['type']): string => {
     case 'code':
       return 'md:top-1.5';
     default:
-      return 'md:top-2';
+      return 'md:top-2.5';
   }
 };
 
@@ -133,7 +133,7 @@ const getBadgeTopClass = (type: Block['type']): string => {
     case 'code':
       return 'md:top-[2px]';
     default:
-      return 'md:top-2';
+      return 'md:top-2.5';
   }
 };
 
@@ -278,6 +278,18 @@ const sanitizePastedHtml = (html: string) => {
 
   return parsed.body.innerHTML;
 };
+
+const normalizePastedText = (text: string) =>
+  text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/^\n+|\n+$/g, '');
+
+const plainTextToHtml = (text: string) =>
+  normalizePastedText(text)
+    .split('\n')
+    .map((line) => escapeHtml(line))
+    .join('<br>');
 
 const imageExtensionPattern = /\.(apng|avif|gif|jpe?g|png|svg|webp|bmp|ico|tiff?)(\?.*)?$/i;
 
@@ -657,6 +669,17 @@ export const BlockWrapper = ({
     setToolbarPosition(null);
   };
 
+  const insertRichPlainText = (text: string) => {
+    const editor = richTextRef.current;
+    const html = plainTextToHtml(text);
+    if (!editor || !html.trim()) return;
+
+    editor.focus();
+    document.execCommand('insertHTML', false, html);
+    onUpdate(editor.innerHTML);
+    setToolbarPosition(null);
+  };
+
   const insertRichTextLineBreak = () => {
     const editor = richTextRef.current;
     if (!editor) return;
@@ -668,27 +691,40 @@ export const BlockWrapper = ({
   };
 
   const handleRichTextKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const selection = window.getSelection();
+    const selectedNode = selection?.anchorNode;
+    const selectedElement =
+      selectedNode instanceof HTMLElement ? selectedNode : selectedNode?.parentElement;
+    const selectedListItem = selectedElement?.closest('li');
+
+    if (event.key === 'Tab' && selectedListItem) {
+      event.preventDefault();
+      applyRichTextCommand(event.shiftKey ? 'outdent' : 'indent');
+      return;
+    }
+
     if (event.key === 'Enter' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       insertRichTextLineBreak();
       return;
     }
 
-    const selection = window.getSelection();
-    const selectedNode = selection?.anchorNode;
-    const selectedElement =
-      selectedNode instanceof HTMLElement ? selectedNode : selectedNode?.parentElement;
-
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&
       !event.ctrlKey &&
       !event.metaKey &&
-      selectedElement?.closest('li')
+      selectedListItem
     ) {
       window.setTimeout(() => {
         if (richTextRef.current) onUpdate(richTextRef.current.innerHTML);
       });
+      return;
+    }
+
+    if (event.key === 'Backspace' && selectedListItem && !selectedListItem.textContent?.trim()) {
+      event.preventDefault();
+      applyRichTextCommand('outdent');
       return;
     }
 
@@ -714,6 +750,21 @@ export const BlockWrapper = ({
     if (clipboardHasImage(event.clipboardData)) return;
 
     const html = event.clipboardData.getData('text/html');
+    if (/<\/?(ul|ol|li)\b/i.test(html)) {
+      event.preventDefault();
+      event.stopPropagation();
+      insertRichHtml(html);
+      return;
+    }
+
+    const text = event.clipboardData.getData('text/plain');
+    if (text.trim()) {
+      event.preventDefault();
+      event.stopPropagation();
+      insertRichPlainText(text);
+      return;
+    }
+
     if (!html) return;
 
     event.preventDefault();
