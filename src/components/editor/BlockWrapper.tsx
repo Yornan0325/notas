@@ -763,12 +763,11 @@ export const BlockWrapper = ({
       ref={blockContainerRef}
       id={`block-${block.id}`}
       data-editor-block="true"
-      className={`group relative flex items-start rounded-md py-1 pl-10 transition-colors ${
-        isInColumn ? 'md:pl-14' : 'md:-ml-14 md:pl-14'
+      className={`group relative flex items-start rounded-md py-1 pl-12 transition-colors ${
+        isInColumn ? 'md:pl-14' : 'md:-ml-10 md:pl-18'
       } ${
         block.type !== 'callout' && block.type !== 'card_notice' && block.type !== 'code' ? 'hover:bg-slate-50' : ''
       }`}
-      onMouseLeave={() => setShowSelector(false)}
       onDragOver={readOnly ? undefined : onImageDragOver}
       onDrop={readOnly ? undefined : onImageDrop}
       draggable={!readOnly && block.type === 'card_notice' && isGrabbed}
