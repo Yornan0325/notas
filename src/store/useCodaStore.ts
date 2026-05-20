@@ -425,7 +425,7 @@ export const useCodaStore = create<CodaState>()(
 
           return {
             blocks: rebuildBlocksForPage(state.blocks, movingBlock.pageId, nextPageBlocks.map((block) =>
-              placement === 'beside' && block.id === targetId && block.type === 'image'
+              placement === 'beside' && block.id === targetId && (block.type === 'image' || block.type === 'card_notice')
                 ? {
                     ...block,
                     imageFlow: 'columns',

@@ -14,6 +14,7 @@ export interface Block {
     | 'quote'
     | 'code'
     | 'callout'
+    | 'card_notice'
     | 'divider'
     | 'image'
     | 'view_table'

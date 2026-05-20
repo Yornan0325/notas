@@ -138,6 +138,7 @@ const favoriteFallbackLabels: Partial<Record<Block['type'], string>> = {
   h3: 'Subtitulo favorito',
   quote: 'Cita favorita',
   callout: 'Aviso favorito',
+  card_notice: 'Aviso tarjeta favorito',
   todo: 'Tarea favorita',
   text: 'Texto favorito',
   code: 'Codigo favorito',
@@ -400,7 +401,8 @@ export const Canvas = ({
     > = [];
 
     pageBlocks.forEach((block, index) => {
-      const canJoinColumns = block.type === 'image' && block.imageFlow === 'columns';
+      const canJoinColumns =
+        (block.type === 'image' || block.type === 'card_notice') && block.imageFlow === 'columns';
       const lastRow = rows[rows.length - 1];
 
       if (canJoinColumns && lastRow?.type === 'columns' && lastRow.items.length < 3) {
@@ -755,7 +757,7 @@ export const Canvas = ({
     const yRatio = (event.clientY - rect.top) / rect.height;
     const xRatio = (event.clientX - rect.left) / rect.width;
 
-    if (targetBlock.type === 'image' && yRatio > 0.2 && yRatio < 0.8 && xRatio > 0.25 && xRatio < 0.75) {
+    if ((targetBlock.type === 'image' || targetBlock.type === 'card_notice') && yRatio > 0.2 && yRatio < 0.8 && xRatio > 0.25 && xRatio < 0.75) {
       return 'beside' as const;
     }
 
@@ -768,7 +770,9 @@ export const Canvas = ({
 
     event.preventDefault();
     const placement = getDropPlacement(event, targetBlock);
-    setDragState({ ...dragState, targetId: targetBlock.id, placement });
+    if (dragState.targetId !== targetBlock.id || dragState.placement !== placement) {
+      setDragState({ ...dragState, targetId: targetBlock.id, placement });
+    }
   };
 
   const handleImageDrop = (event: DragEvent<HTMLDivElement>, targetBlock: Block) => {
@@ -833,11 +837,12 @@ export const Canvas = ({
     return listNumber;
   };
 
-  const renderBlock = (block: Block, index: number) => (
+  const renderBlock = (block: Block, index: number, isInColumn?: boolean) => (
     <BlockWrapper
       key={block.id}
       block={block}
       index={index}
+      isInColumn={isInColumn}
       listNumber={block.type === 'numbered_list' ? getNumberedListNumber(index) : undefined}
       isFocused={activeBlockId === block.id}
       dragPlacement={dragState?.targetId === block.id ? dragState.placement : null}
@@ -876,7 +881,7 @@ export const Canvas = ({
     <div
       ref={canvasRef}
       data-editor-canvas="true"
-      className="relative mx-auto min-h-screen w-full max-w-[1360px] flex-1 px-4 py-10 md:grid md:grid-cols-[minmax(3.5rem,1fr)_minmax(0,56rem)_16rem] md:gap-8 md:px-8 md:py-12 xl:grid-cols-[minmax(5rem,1fr)_minmax(0,58rem)_17rem]"
+      className="relative mx-auto min-h-screen w-full max-w-[1360px] flex-1 px-4 py-10 md:grid md:grid-cols-[minmax(5rem,1fr)_minmax(0,56rem)_16rem] md:gap-8 md:px-8 md:py-12 xl:grid-cols-[minmax(5.5rem,1fr)_minmax(0,58rem)_17rem]"
       onMouseDown={handleCanvasMouseDown}
       onPaste={readOnly ? undefined : handleCanvasPaste}
       tabIndex={-1}
@@ -1085,11 +1090,13 @@ export const Canvas = ({
           return (
             <div
               key={row.items.map((item) => item.block.id).join('-')}
-              className="grid grid-cols-1 gap-3 lg:grid-cols-3"
+              className={`grid grid-cols-1 gap-4 md:-ml-14 md:w-[calc(100%+3.5rem)] md:max-w-[calc(100%+3.5rem)] md:gap-6 ${
+                row.items.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'
+              }`}
             >
               {row.items.map((item) => (
                 <div key={item.block.id} className="min-w-0">
-                  {renderBlock(item.block, item.index)}
+                  {renderBlock(item.block, item.index, true)}
                 </div>
               ))}
             </div>
