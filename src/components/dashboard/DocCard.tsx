@@ -74,7 +74,7 @@ export const DocCard = ({ doc, readOnly = false }: { doc: Page; readOnly?: boole
   }, [showMenu]);
 
   return (
-    <Card className="relative transition-colors hover:border-slate-300 hover:shadow-md">
+    <Card className="relative min-w-0 transition-colors hover:border-slate-300 hover:shadow-md">
       <Link to={`/doc/${doc.docId}`} className="flex items-center gap-4 p-4">
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-100"
