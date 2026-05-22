@@ -453,12 +453,17 @@ const isSelectionAtStartOfElement = (element: HTMLElement) => {
   if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
 
   const range = selection.getRangeAt(0);
+  if (!element.contains(range.startContainer)) return false;
+
   const beforeRange = range.cloneRange();
   beforeRange.selectNodeContents(element);
   beforeRange.setEnd(range.startContainer, range.startOffset);
 
-  return beforeRange.toString().length === 0;
+  return beforeRange.toString().replace(/\u200b/g, '').trim().length === 0;
 };
+
+const isStaticMarkerBlock = (type: Block['type']) =>
+  type === 'bullet_list' || type === 'numbered_list' || type === 'todo' || type === 'toggle_list';
 
 const escapeHtml = (value: string) =>
   value
@@ -808,6 +813,88 @@ export const BlockWrapper = ({
     setToolbarPosition(null);
   };
 
+  const placeCaretAtStart = (element: HTMLElement) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(true);
+
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  };
+
+  const unwrapListItemToTextLine = (listItem: HTMLLIElement) => {
+    const editor = richTextRef.current;
+    const list = listItem.parentElement;
+    const listParent = list?.parentElement;
+    if (!editor || !list || !listParent) return false;
+
+    const textLine = document.createElement('div');
+    textLine.innerHTML = listItem.textContent?.trim() ? listItem.innerHTML : '<br>';
+    textLine.querySelectorAll('ul, ol').forEach((nestedList) => nestedList.remove());
+
+    const beforeList = list.cloneNode(false) as HTMLElement;
+    while (list.firstElementChild && list.firstElementChild !== listItem) {
+      beforeList.appendChild(list.firstElementChild);
+    }
+
+    listItem.remove();
+
+    if (beforeList.childElementCount > 0) {
+      listParent.insertBefore(beforeList, list);
+    }
+
+    listParent.insertBefore(textLine, list);
+
+    if (!list.querySelector('li')) {
+      list.remove();
+    }
+
+    placeCaretAtStart(textLine);
+    onUpdate(editor.innerHTML);
+    setToolbarPosition(null);
+    return true;
+  };
+
+  const removeMarkerAtCaret = () => {
+    const selection = window.getSelection();
+    const selectedNode = selection?.anchorNode;
+    const selectedElement =
+      selectedNode instanceof HTMLElement ? selectedNode : selectedNode?.parentElement;
+    const selectedListItem = selectedElement?.closest('li');
+
+    if (!selection || !selection.isCollapsed) return false;
+
+    if (selectedListItem && isSelectionAtStartOfElement(selectedListItem)) {
+      if (unwrapListItemToTextLine(selectedListItem as HTMLLIElement)) return true;
+      applyRichTextCommand('outdent');
+      return true;
+    }
+
+    if (
+      !selectedListItem &&
+      isStaticMarkerBlock(block.type) &&
+      richTextRef.current &&
+      isSelectionAtStartOfElement(richTextRef.current)
+    ) {
+      onChangeType('text');
+      setToolbarPosition(null);
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleRichTextBeforeInput = (event: FormEvent<HTMLDivElement>) => {
+    const nativeEvent = event.nativeEvent as InputEvent;
+    if (!['deleteContentBackward', 'deleteContentForward'].includes(nativeEvent.inputType)) return;
+
+    if (removeMarkerAtCaret()) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
   const handleRichTextKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const selection = window.getSelection();
     const selectedNode = selection?.anchorNode;
@@ -841,12 +928,11 @@ export const BlockWrapper = ({
     }
 
     if (
-      event.key === 'Backspace' &&
-      selectedListItem &&
-      (!selectedListItem.textContent?.trim() || isSelectionAtStartOfElement(selectedListItem))
+      (event.key === 'Backspace' || event.key === 'Delete') &&
+      removeMarkerAtCaret()
     ) {
       event.preventDefault();
-      applyRichTextCommand('outdent');
+      event.stopPropagation();
       return;
     }
 
@@ -1659,6 +1745,7 @@ export const BlockWrapper = ({
                   contentEditable={!readOnly}
                   suppressContentEditableWarning
                   data-placeholder={placeholders[block.type]}
+                  onBeforeInput={readOnly ? undefined : handleRichTextBeforeInput}
                   onInput={handleRichTextInput}
                   onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
                   onPaste={readOnly ? undefined : handleRichTextPaste}
@@ -1676,6 +1763,7 @@ export const BlockWrapper = ({
               contentEditable={!readOnly}
               suppressContentEditableWarning
               data-placeholder={placeholders[block.type]}
+              onBeforeInput={readOnly ? undefined : handleRichTextBeforeInput}
               onInput={handleRichTextInput}
               onKeyDown={readOnly ? undefined : handleRichTextKeyDown}
               onPaste={readOnly ? undefined : handleRichTextPaste}

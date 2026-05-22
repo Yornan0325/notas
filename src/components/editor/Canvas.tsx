@@ -530,7 +530,14 @@ export const Canvas = ({
       return;
     }
 
-    if (e.key === 'Backspace' && currentBlock && getBlockPlainText(currentBlock.content) === '') {
+    if ((e.key === 'Backspace' || e.key === 'Delete') && currentBlock && getBlockPlainText(currentBlock.content) === '') {
+      if (isListBlock(currentBlock.type)) {
+        e.preventDefault();
+        changeBlockType(blockId, 'text');
+        updateBlock(blockId, '');
+        return;
+      }
+
       if (currentIndex > 0) {
         e.preventDefault();
         const prevBlock = pageBlocks[currentIndex - 1];
