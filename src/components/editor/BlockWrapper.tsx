@@ -276,6 +276,9 @@ const sanitizePastedHtml = (html: string) => {
     });
   });
 
+  parsed.body.querySelectorAll('li').forEach((item) => removeLeadingListMarker(item, parsed.body));
+  normalizePseudoLists(parsed.body);
+
   return parsed.body.innerHTML;
 };
 
@@ -285,11 +288,114 @@ const normalizePastedText = (text: string) =>
     .replace(/\r/g, '\n')
     .replace(/^\n+|\n+$/g, '');
 
-const plainTextToHtml = (text: string) =>
+const listLinePattern = /^(\s*)(?:([•●○▪■‣–-])|(\d+|[a-zA-Z])[.)])\s+(.+)$/;
+const leadingListMarkerPattern = /^(\s*)(?:[•●○▪■‣–-]|(?:\d+|[a-zA-Z])[.)])\s*/;
+
+const removeLeadingListMarker = (element: Element, root: HTMLElement) => {
+  const walker = root.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  let textNode = walker.nextNode() as Text | null;
+
+  while (textNode) {
+    const value = textNode.nodeValue || '';
+    if (value.trim()) {
+      textNode.nodeValue = value.replace(leadingListMarkerPattern, '');
+      return;
+    }
+    textNode = walker.nextNode() as Text | null;
+  }
+};
+
+const hasPlainTextList = (text: string) =>
   normalizePastedText(text)
     .split('\n')
-    .map((line) => escapeHtml(line))
-    .join('<br>');
+    .some((line) => listLinePattern.test(line));
+
+const getPlainTextListLevel = (indent: string) => Math.min(4, Math.floor(indent.replace(/\t/g, '    ').length / 2));
+
+const plainTextListToHtml = (text: string) => {
+  const lines = normalizePastedText(text).split('\n');
+  const html: string[] = [];
+  const listStack: Array<'ul' | 'ol'> = [];
+  let openLi = false;
+
+  const closeLi = () => {
+    if (openLi) {
+      html.push('</li>');
+      openLi = false;
+    }
+  };
+
+  const closeToLevel = (level: number) => {
+    closeLi();
+    while (listStack.length > level) {
+      html.push(`</${listStack.pop()}>`);
+    }
+  };
+
+  lines.forEach((line) => {
+    const match = line.match(listLinePattern);
+    if (!match) {
+      if (!line.trim()) return;
+      closeToLevel(0);
+      html.push(escapeHtml(line.trim()), '<br>');
+      return;
+    }
+
+    const [, indent, unorderedMarker, orderedMarker, content] = match;
+    const listType: 'ul' | 'ol' = unorderedMarker ? 'ul' : 'ol';
+    const level = getPlainTextListLevel(indent);
+
+    closeLi();
+    while (listStack.length > level + 1) {
+      html.push(`</${listStack.pop()}>`);
+    }
+    while (listStack.length < level + 1) {
+      html.push(`<${listType}>`);
+      listStack.push(listType);
+    }
+    if (listStack[listStack.length - 1] !== listType) {
+      html.push(`</${listStack.pop()}>`, `<${listType}>`);
+      listStack.push(listType);
+    }
+
+    const value = orderedMarker && /^[a-zA-Z]$/.test(orderedMarker) ? orderedMarker : undefined;
+    html.push(`<li${value ? ` value="${escapeHtml(value)}"` : ''}>${escapeHtml(content.trim())}`);
+    openLi = true;
+  });
+
+  closeToLevel(0);
+  return html.join('').replace(/<br>$/, '');
+};
+
+const plainTextToHtml = (text: string) =>
+  hasPlainTextList(text)
+    ? plainTextListToHtml(text)
+    : normalizePastedText(text)
+        .split('\n')
+        .map((line) => escapeHtml(line))
+        .join('<br>');
+
+const normalizePseudoLists = (root: HTMLElement) => {
+  const blockSelector = 'p, div';
+  const blocks = Array.from(root.querySelectorAll(blockSelector)).filter(
+    (element) => !element.closest('ul, ol') && listLinePattern.test(element.textContent || '')
+  );
+
+  blocks.forEach((element) => {
+    const text = element.textContent || '';
+    const match = text.match(listLinePattern);
+    if (!match) return;
+
+    const [, , unorderedMarker, , content] = match;
+    const list = root.ownerDocument.createElement(unorderedMarker ? 'ul' : 'ol');
+    const item = root.ownerDocument.createElement('li');
+    item.innerHTML = element.innerHTML;
+    removeLeadingListMarker(item, root);
+    if (!item.textContent?.trim()) item.textContent = content.trim();
+    list.appendChild(item);
+    element.replaceWith(list);
+  });
+};
 
 const imageExtensionPattern = /\.(apng|avif|gif|jpe?g|png|svg|webp|bmp|ico|tiff?)(\?.*)?$/i;
 
@@ -341,6 +447,18 @@ const getCollapsedTitleFromHtml = (html: string) => {
 };
 
 const hasStructuredListContent = (html: string) => /<(ul|ol)\b/i.test(html);
+
+const isSelectionAtStartOfElement = (element: HTMLElement) => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+
+  const range = selection.getRangeAt(0);
+  const beforeRange = range.cloneRange();
+  beforeRange.selectNodeContents(element);
+  beforeRange.setEnd(range.startContainer, range.startOffset);
+
+  return beforeRange.toString().length === 0;
+};
 
 const escapeHtml = (value: string) =>
   value
@@ -722,7 +840,11 @@ export const BlockWrapper = ({
       return;
     }
 
-    if (event.key === 'Backspace' && selectedListItem && !selectedListItem.textContent?.trim()) {
+    if (
+      event.key === 'Backspace' &&
+      selectedListItem &&
+      (!selectedListItem.textContent?.trim() || isSelectionAtStartOfElement(selectedListItem))
+    ) {
       event.preventDefault();
       applyRichTextCommand('outdent');
       return;
