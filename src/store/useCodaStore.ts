@@ -44,6 +44,7 @@ interface CodaState {
     options?: { isDocumentRoot?: boolean }
   ) => string;
   duplicatePage: (id: string) => string | null;
+  movePage: (id: string, direction: 'up' | 'down') => void;
   updatePageTitle: (id: string, title: string) => void;
   updatePageIcon: (id: string, icon: string) => void;
   updatePageProject: (id: string, projectName?: string) => void;
@@ -141,6 +142,22 @@ const collectPageTreeIds = (pages: Page[], rootId: string) => {
   return ids;
 };
 
+const getOrderedSiblingPages = (pages: Page[], docId: string, parentId: string | null) =>
+  pages
+    .map((page, index) => ({ page, index }))
+    .filter(
+      (item) =>
+        item.page.docId === docId &&
+        (item.page.parentId || null) === parentId &&
+        !item.page.isDocumentRoot
+    )
+    .sort((a, b) => {
+      const orderA = a.page.pageOrder ?? a.index;
+      const orderB = b.page.pageOrder ?? b.index;
+      return orderA === orderB ? a.index - b.index : orderA - orderB;
+    })
+    .map((item) => item.page);
+
 export const useCodaStore = create<CodaState>()(
   persist(
     (set) => ({
@@ -156,6 +173,7 @@ export const useCodaStore = create<CodaState>()(
         set((state) => {
           const existingPage = state.pages.find(p => p.docId === docId);
           const ownerWorkspaceId = existingPage?.ownerWorkspaceId;
+          const siblingCount = getOrderedSiblingPages(state.pages, docId, parentId || null).length;
           
           return {
             pages: [
@@ -170,6 +188,7 @@ export const useCodaStore = create<CodaState>()(
                 createdAt: timestamp,
                 updatedAt: timestamp,
                 synced: false,
+                pageOrder: siblingCount,
                 ownerWorkspaceId,
               },
             ],
@@ -190,6 +209,11 @@ export const useCodaStore = create<CodaState>()(
           const sourcePages = state.pages.filter((page) => sourceIds.has(page.id));
           const idMap = new Map<string, string>();
           const timestamp = now();
+          const siblingCount = getOrderedSiblingPages(
+            state.pages,
+            sourceRoot.docId,
+            sourceRoot.parentId || null
+          ).length;
 
           sourcePages.forEach((page) => idMap.set(page.id, crypto.randomUUID()));
           duplicatedRootId = idMap.get(id) || null;
@@ -201,6 +225,7 @@ export const useCodaStore = create<CodaState>()(
             parentId: page.parentId && sourceIds.has(page.parentId)
               ? idMap.get(page.parentId) || null
               : sourceRoot.parentId,
+            pageOrder: page.id === id ? siblingCount : page.pageOrder,
             createdAt: timestamp,
             updatedAt: timestamp,
             synced: false,
@@ -223,6 +248,38 @@ export const useCodaStore = create<CodaState>()(
 
         return duplicatedRootId;
       },
+
+      movePage: (id, direction) =>
+        set((state) => {
+          const movingPage = state.pages.find((page) => page.id === id);
+          if (!movingPage || movingPage.isDocumentRoot) return state;
+
+          const parentId = movingPage.parentId || null;
+          const siblings = getOrderedSiblingPages(state.pages, movingPage.docId, parentId);
+          const currentIndex = siblings.findIndex((page) => page.id === id);
+          const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+          if (currentIndex === -1 || targetIndex < 0 || targetIndex >= siblings.length) return state;
+
+          const nextSiblings = [...siblings];
+          const [pageToMove] = nextSiblings.splice(currentIndex, 1);
+          nextSiblings.splice(targetIndex, 0, pageToMove);
+          const nextOrderById = new Map(nextSiblings.map((page, index) => [page.id, index]));
+          const timestamp = now();
+
+          return {
+            pages: state.pages.map((page) =>
+              nextOrderById.has(page.id)
+                ? {
+                    ...page,
+                    pageOrder: nextOrderById.get(page.id),
+                    updatedAt: timestamp,
+                    synced: false,
+                  }
+                : page
+            ),
+          };
+        }),
 
       updatePageTitle: (id, title) =>
         set((state) => ({

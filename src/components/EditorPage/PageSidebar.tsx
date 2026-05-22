@@ -7,6 +7,8 @@ import type {
 } from 'react';
 import {
   ArrowLeft,
+  ArrowDown,
+  ArrowUp,
   ChevronDown,
   ChevronRight,
   Copy,
@@ -30,6 +32,19 @@ import type { Page } from '../type/typeScript';
 import { PageIconPicker } from './PageIconPicker';
 import { Link } from 'react-router-dom';
 
+const orderPages = (items: Page[], allPages: Page[]) =>
+  items
+    .map((page) => ({
+      page,
+      index: allPages.findIndex((item) => item.id === page.id),
+    }))
+    .sort((a, b) => {
+      const orderA = a.page.pageOrder ?? a.index;
+      const orderB = b.page.pageOrder ?? b.index;
+      return orderA === orderB ? a.index - b.index : orderA - orderB;
+    })
+    .map((item) => item.page);
+
 export const PageSidebar = ({
   docId,
   activePageId,
@@ -49,11 +64,14 @@ export const PageSidebar = ({
   const documentRoot = getDocumentRoot(pages, docId);
   const docPages = pages.filter((page) => page.docId === docId);
   const docPageIds = new Set(docPages.map((page) => page.id));
-  const rootPages = docPages.filter(
-    (page) =>
-      !page.isDocumentRoot &&
-      page.id !== documentRoot?.id &&
-      (!page.parentId || !docPageIds.has(page.parentId))
+  const rootPages = orderPages(
+    docPages.filter(
+      (page) =>
+        !page.isDocumentRoot &&
+        page.id !== documentRoot?.id &&
+        (!page.parentId || !docPageIds.has(page.parentId))
+    ),
+    pages
   );
   const favoriteCountByPage = blocks.reduce<Record<string, number>>((counts, block) => {
     if (block.isFavorite) counts[block.pageId] = (counts[block.pageId] || 0) + 1;
@@ -164,6 +182,7 @@ const PageItem = ({
     pages,
     addPage,
     duplicatePage,
+    movePage,
     removePage,
     updatePageIcon,
     updatePageTitle,
@@ -175,7 +194,7 @@ const PageItem = ({
   const [title, setTitle] = useState(page.title);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const children = pages.filter((item) => item.parentId === page.id);
+  const children = orderPages(pages.filter((item) => item.parentId === page.id), pages);
   const isActive = activePageId === page.id;
   const favoriteCount = favoriteCountByPage[page.id] || 0;
 
@@ -232,6 +251,13 @@ const PageItem = ({
     e.stopPropagation();
     setTitle(page.title);
     setIsEditing(true);
+    setShowMenu(false);
+  };
+
+  const moveCurrentPage = (direction: 'up' | 'down') => (e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    movePage(page.id, direction);
     setShowMenu(false);
   };
 
@@ -331,6 +357,9 @@ const PageItem = ({
             <DropdownMenuContent className="w-56">
               <MenuItem icon={<PlusSquare size={15} />} label="Agregar subpagina" onClick={createChild} />
               <MenuItem icon={<Plus size={15} />} label="Agregar pagina" onClick={createSibling} />
+              <Separator className="my-1" />
+              <MenuItem icon={<ArrowUp size={15} />} label="Subir elemento" onClick={moveCurrentPage('up')} />
+              <MenuItem icon={<ArrowDown size={15} />} label="Bajar elemento" onClick={moveCurrentPage('down')} />
               <Separator className="my-1" />
               <MenuItem icon={<Edit3 size={15} />} label="Renombrar pagina" onClick={handleRename} />
               <MenuItem

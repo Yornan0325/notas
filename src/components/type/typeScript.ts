@@ -56,6 +56,7 @@ export interface Page {
   createdAt?: string;
   updatedAt?: string;
   synced: boolean;
+  pageOrder?: number;
   ownerWorkspaceId?: string;
   sharePermission?: SharePermission;
   sharedRootId?: string;
