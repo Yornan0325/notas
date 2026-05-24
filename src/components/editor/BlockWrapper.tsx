@@ -897,6 +897,16 @@ export const BlockWrapper = ({
     setToolbarPosition(null);
   };
 
+  const insertRichParagraphBreak = () => {
+    const editor = richTextRef.current;
+    if (!editor) return;
+
+    editor.focus();
+    document.execCommand('insertParagraph');
+    onUpdate(editor.innerHTML);
+    setToolbarPosition(null);
+  };
+
   const placeCaretAtStart = (element: HTMLElement) => {
     const range = document.createRange();
     range.selectNodeContents(element);
@@ -1008,6 +1018,18 @@ export const BlockWrapper = ({
       window.setTimeout(() => {
         if (richTextRef.current) onUpdate(richTextRef.current.innerHTML);
       });
+      return;
+    }
+
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      insertRichParagraphBreak();
       return;
     }
 
