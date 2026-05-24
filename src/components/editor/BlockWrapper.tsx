@@ -1347,7 +1347,7 @@ export const BlockWrapper = ({
       )}
 
       <div
-        className={`flex w-full items-start gap-2.5 ${blockShell}`}
+        className={`flex w-full items-start gap-2.5 ${block.type === 'image' ? 'md:-ml-12 md:w-[calc(100%+3rem)]' : ''} ${blockShell}`}
       >
         {hasIcon && (
           <div
@@ -1647,12 +1647,12 @@ export const BlockWrapper = ({
         )}
 
         {block.type === 'image' && (
-          <div className="mb-2 rounded-md bg-transparent">
+          <div className="mb-2 w-full rounded-md bg-transparent">
             {block.content ? (
               <div
                 ref={imageFrameRef}
                 draggable={!readOnly}
-                className={`relative overflow-hidden rounded bg-white ${imageAlignmentClass} ${
+                className={`relative overflow-visible rounded bg-white ${imageAlignmentClass} ${
                   isImageSelected
                     ? 'outline outline-2 outline-slate-950 outline-offset-2'
                     : 'hover:outline hover:outline-1 hover:outline-slate-300 hover:outline-offset-2'
@@ -1686,7 +1686,7 @@ export const BlockWrapper = ({
                 <img
                   src={block.content}
                   alt={block.attachmentName || 'Imagen del bloque'}
-                  className="max-h-[520px] w-full object-contain bg-white"
+                  className="h-auto w-full max-w-none object-contain bg-white"
                   draggable={false}
                 />
                 {showImageActions && (

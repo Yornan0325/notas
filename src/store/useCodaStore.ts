@@ -354,6 +354,7 @@ export const useCodaStore = create<CodaState>()(
             pageId,
             createdAt: timestamp,
             updatedAt: timestamp,
+            imageWidth: type === 'image' ? 100 : undefined,
             ownerWorkspaceId: page?.ownerWorkspaceId
           };
           const pageBlocks = getOrderedPageBlocks(state.blocks, pageId);
@@ -388,6 +389,7 @@ export const useCodaStore = create<CodaState>()(
             pageId,
             createdAt: timestamp,
             updatedAt: timestamp,
+            imageWidth: type === 'image' ? 100 : undefined,
             ownerWorkspaceId: page?.ownerWorkspaceId,
           };
           const pageBlocks = getOrderedPageBlocks(state.blocks, pageId);
