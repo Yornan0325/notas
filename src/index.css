@@ -51,10 +51,21 @@ textarea::-webkit-scrollbar {
   text-decoration: underline;
 }
 
+.rich-text-editor p,
+.rich-text-editor div {
+  margin: 0 0 0.75rem;
+  line-height: 1.55;
+}
+
+.rich-text-editor p:last-child,
+.rich-text-editor div:last-child {
+  margin-bottom: 0;
+}
+
 .rich-text-editor h1,
 .rich-text-editor h2,
 .rich-text-editor h3 {
-  margin: 0.35rem 0 0.2rem;
+  margin: 1.1rem 0 0.45rem;
   color: #0f172a;
   font-weight: 600;
   letter-spacing: 0;
@@ -98,7 +109,7 @@ textarea::-webkit-scrollbar {
 
 .rich-text-editor ul,
 .rich-text-editor ol {
-  margin: 0.15rem 0;
+  margin: 0.3rem 0 0.75rem;
   padding-left: 1.45em;
   list-style-position: outside;
 }
@@ -134,9 +145,9 @@ textarea::-webkit-scrollbar {
 }
 
 .rich-text-editor li {
-  margin: 0.05rem 0;
+  margin: 0.12rem 0;
   padding-left: 0.2em;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .rich-text-editor li::marker {
@@ -144,8 +155,21 @@ textarea::-webkit-scrollbar {
   font-weight: 600;
 }
 
-.rich-text-editor li > p {
-  margin: 0;
+.rich-text-editor li p,
+.rich-text-editor li div {
+  display: inline;
+  margin: 0 !important;
+  line-height: inherit;
+}
+
+.rich-text-editor li > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.rich-text-editor li br:first-child,
+.rich-text-editor li br:last-child {
+  display: none;
 }
 
 .rich-text-editor table {

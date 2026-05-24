@@ -259,25 +259,46 @@ const alignOptions = [
 const sanitizePastedHtml = (html: string) => {
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   const blockedTags = ['script', 'style', 'meta', 'link', 'iframe', 'object', 'embed'];
+  const allowedAttributes: Record<string, string[]> = {
+    a: ['href', 'target', 'rel'],
+    img: ['src', 'alt'],
+  };
 
   blockedTags.forEach((tag) => {
     parsed.querySelectorAll(tag).forEach((node) => node.remove());
   });
 
   parsed.body.querySelectorAll('*').forEach((element) => {
+    const tagName = element.tagName.toLowerCase();
+    const allowedForTag = allowedAttributes[tagName] || [];
+
     Array.from(element.attributes).forEach((attribute) => {
       const name = attribute.name.toLowerCase();
       const value = attribute.value.trim().toLowerCase();
 
-      if (name.startsWith('on')) element.removeAttribute(attribute.name);
+      if (!allowedForTag.includes(name) || name.startsWith('on')) {
+        element.removeAttribute(attribute.name);
+        return;
+      }
+
       if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
         element.removeAttribute(attribute.name);
       }
     });
+
+    if (tagName === 'a' && element.getAttribute('href')) {
+      element.setAttribute('target', '_blank');
+      element.setAttribute('rel', 'noreferrer');
+    }
   });
 
+  parsed.body.querySelectorAll('span').forEach((span) => {
+    span.replaceWith(...Array.from(span.childNodes));
+  });
   parsed.body.querySelectorAll('li').forEach((item) => removeLeadingListMarker(item, parsed.body));
   normalizePseudoLists(parsed.body);
+  cleanPastedListItems(parsed.body);
+  mergeAdjacentLists(parsed.body);
 
   return parsed.body.innerHTML;
 };
@@ -288,8 +309,8 @@ const normalizePastedText = (text: string) =>
     .replace(/\r/g, '\n')
     .replace(/^\n+|\n+$/g, '');
 
-const listLinePattern = /^(\s*)(?:([•●○▪■‣–-])|(\d+|[a-zA-Z])[.)])\s+(.+)$/;
-const leadingListMarkerPattern = /^(\s*)(?:[•●○▪■‣–-]|(?:\d+|[a-zA-Z])[.)])\s*/;
+const listLinePattern = /^(\s*)(?:([\u2022\u25cf\u25cb\u25aa\u25a0\u2023\u2013-])|(\d+|[a-zA-Z])[.)])\s+(.+)$/;
+const leadingListMarkerPattern = /^(\s*)(?:[\u2022\u25cf\u25cb\u25aa\u25a0\u2023\u2013-]|(?:\d+|[a-zA-Z])[.)])\s*/;
 
 const removeLeadingListMarker = (element: Element, root: HTMLElement) => {
   const walker = root.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
@@ -395,6 +416,69 @@ const normalizePseudoLists = (root: HTMLElement) => {
     list.appendChild(item);
     element.replaceWith(list);
   });
+};
+
+const cleanPastedListItems = (root: HTMLElement) => {
+  root.querySelectorAll('li').forEach((item) => {
+    Array.from(item.children).forEach((child) => {
+      const tagName = child.tagName.toLowerCase();
+      const text = child.textContent?.trim() || '';
+
+      if ((tagName === 'p' || tagName === 'div') && !text) {
+        child.remove();
+        return;
+      }
+
+      if (tagName === 'p' || tagName === 'div') {
+        child.replaceWith(...Array.from(child.childNodes));
+      }
+    });
+
+    item.normalize();
+  });
+};
+
+const mergeAdjacentLists = (root: HTMLElement) => {
+  const mergeInContainer = (container: Element | DocumentFragment) => {
+    let current = container.firstChild;
+
+    while (current) {
+      if (current instanceof HTMLElement) mergeInContainer(current);
+
+      if (!(current instanceof HTMLElement) || !['UL', 'OL'].includes(current.tagName)) {
+        current = current.nextSibling;
+        continue;
+      }
+
+      let next = current.nextSibling;
+
+      while (next && next.nodeType === Node.TEXT_NODE && !next.textContent?.trim()) {
+        const emptyText = next;
+        next = next.nextSibling;
+        emptyText.remove();
+      }
+
+      while (next instanceof HTMLBRElement) {
+        const br = next;
+        next = next.nextSibling;
+        br.remove();
+      }
+
+      if (next instanceof HTMLElement && next.tagName === current.tagName) {
+        while (next.firstChild) {
+          current.appendChild(next.firstChild);
+        }
+        const listToRemove = next;
+        next = next.nextSibling;
+        listToRemove.remove();
+        continue;
+      }
+
+      current = current.nextSibling;
+    }
+  };
+
+  mergeInContainer(root);
 };
 
 const imageExtensionPattern = /\.(apng|avif|gif|jpe?g|png|svg|webp|bmp|ico|tiff?)(\?.*)?$/i;
