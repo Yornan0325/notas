@@ -11,6 +11,7 @@ import {
   syncWorkspaceToFirebase,
   loadSharedWorkspaceData,
   loadMySharesFromFirebase,
+  uploadBlockImage,
 } from '../api/firebaseQueries';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import type { Block, Page } from '../components/type/typeScript';
@@ -162,7 +163,7 @@ export const useSync = () => {
     if (!isFirebaseConfigured || !user || loading) return;
 
     const performSync = async () => {
-      const pendingBlocks = blocks.filter(b => !b.synced && canSyncRemoteItem(b));
+      let pendingBlocks = blocks.filter(b => !b.synced && canSyncRemoteItem(b));
       const pendingPages = pages.filter(p => !p.synced && canSyncRemoteItem(p));
       const pendingShares = shares.filter(s => !s.synced);
 
@@ -201,6 +202,45 @@ export const useSync = () => {
       });
 
       try {
+        const embeddedImageBlocks = pendingBlocks.filter(
+          (block) => block.type === 'image' && /^data:image\//i.test(block.content)
+        );
+
+        if (embeddedImageBlocks.length > 0) {
+          const migratedBlocks = await Promise.all(
+            embeddedImageBlocks.map(async (block) => {
+              const blob = await fetch(block.content).then((response) => response.blob());
+              const extension = blob.type.split('/')[1] || 'png';
+              const file = new File([blob], block.attachmentName || `imagen-${block.id}.${extension}`, {
+                type: blob.type || 'image/png',
+              });
+              const page = pages.find((item) => item.id === block.pageId);
+              const uploaded = await uploadBlockImage({
+                wsId,
+                docId: page?.docId || 'documento',
+                pageId: block.pageId,
+                blockId: block.id,
+                file,
+              });
+
+              useCodaStore
+                .getState()
+                .updateBlockAttachment(block.id, uploaded.url, uploaded.path, uploaded.name);
+
+              return {
+                ...block,
+                content: uploaded.url,
+                attachmentPath: uploaded.path,
+                attachmentName: uploaded.name,
+              };
+            })
+          );
+
+          pendingBlocks = pendingBlocks.map(
+            (block) => migratedBlocks.find((migrated) => migrated.id === block.id) || block
+          );
+        }
+
         if (deletedBlockIds.length > 0 || deletedPageIds.length > 0 || deletedShareIds.length > 0) {
           await Promise.all([
             ...deletedBlockIds.map(id => deleteFirebaseBlock(wsId, id, knownBlockIds.current.get(id)?.ownerWorkspaceId)),

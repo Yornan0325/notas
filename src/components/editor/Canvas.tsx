@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, ClipboardEvent, DragEvent, KeyboardEvent, MouseEvent as ReactMouseEvent } from 'react';
 import toast from 'react-hot-toast';
+import { getWorkspaceId, isFirebaseConfigured } from '../../api/firebase';
+import { uploadBlockImage } from '../../api/firebaseQueries';
 import { useCodaStore } from '../../store/useCodaStore';
 import { BlockWrapper } from './BlockWrapper';
+import { plainTextToHtml, sanitizePastedHtml } from './richTextPaste';
 import { SlashMenu } from './SlashMenu';
 import type { Block, Page } from '../type/typeScript';
 import { getDefaultViewContent, isViewBlockType, parseViewContent, stringifyViewContent, type ViewBlockType } from './viewBlocks';
@@ -123,6 +126,12 @@ const getBlockPlainText = (content: string) => {
   return element.textContent?.trim() || '';
 };
 
+const getBlockCodeText = (content: string) => {
+  const element = document.createElement('div');
+  element.innerHTML = content;
+  return (element.innerText || element.textContent || '').replace(/\n{3,}/g, '\n\n').trimEnd();
+};
+
 const isTextEntryBlock = (type: Block['type']) =>
   !isViewBlockType(type) && type !== 'image' && type !== 'divider';
 
@@ -216,6 +225,7 @@ const activityStatusOrder: Array<NonNullable<Block['activityStatus']>> = [
 ];
 
 export const Canvas = ({
+  docId,
   pageId,
   pageTitle,
   subpages = [],
@@ -237,6 +247,7 @@ export const Canvas = ({
     updateBlock,
     updateBlockAttachment,
     updateImageLayout,
+    updateCodeLanguage,
     moveBlock,
     changeBlockType,
     toggleBlockAccordion,
@@ -257,6 +268,7 @@ export const Canvas = ({
   const lastSnapshotSignatureRef = useRef('');
   const restoreTargetSignatureRef = useRef<string | null>(null);
   const skipNextHistoryRecordRef = useRef(false);
+  const pendingBlankBlockPageRef = useRef<string | null>(null);
 
   const [slashMenu, setSlashMenu] = useState<{ x: number; y: number; blockId: string } | null>(null);
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -282,26 +294,26 @@ export const Canvas = ({
     [blocks, pageId]
   );
 
-  const createEditorSnapshot = (): EditorSnapshot => ({
+  const createEditorSnapshot = useCallback((): EditorSnapshot => ({
     blocks,
     pages,
-  });
+  }), [blocks, pages]);
 
-  const getSnapshotSignature = (snapshot: EditorSnapshot) =>
+  const getSnapshotSignature = useCallback((snapshot: EditorSnapshot) =>
     JSON.stringify({
       blocks: snapshot.blocks,
       pages: snapshot.pages,
-    });
+    }), []);
 
-  const restoreSnapshot = (snapshot: EditorSnapshot, redoSnapshot?: EditorSnapshot) => {
+  const restoreSnapshot = useCallback((snapshot: EditorSnapshot, redoSnapshot?: EditorSnapshot) => {
     const targetSignature = getSnapshotSignature(snapshot);
     restoreTargetSignatureRef.current = targetSignature;
     if (redoSnapshot) redoStackRef.current = [...redoStackRef.current.slice(-99), redoSnapshot];
     setBlocks(snapshot.blocks);
     setPages(snapshot.pages);
-  };
+  }, [getSnapshotSignature, setBlocks, setPages]);
 
-  const pushCurrentSnapshotToUndo = () => {
+  const pushCurrentSnapshotToUndo = useCallback(() => {
     const snapshot = createEditorSnapshot();
     const signature = getSnapshotSignature(snapshot);
     const lastUndoSnapshot = undoStackRef.current[undoStackRef.current.length - 1];
@@ -315,7 +327,7 @@ export const Canvas = ({
     lastSnapshotRef.current = snapshot;
     lastSnapshotSignatureRef.current = signature;
     skipNextHistoryRecordRef.current = true;
-  };
+  }, [createEditorSnapshot, getSnapshotSignature]);
 
   useEffect(() => {
     const snapshot = createEditorSnapshot();
@@ -349,7 +361,7 @@ export const Canvas = ({
     redoStackRef.current = [];
     lastSnapshotRef.current = snapshot;
     lastSnapshotSignatureRef.current = signature;
-  }, [blocks, pages]);
+  }, [createEditorSnapshot, getSnapshotSignature]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -392,7 +404,7 @@ export const Canvas = ({
 
     document.addEventListener('keydown', handleHistoryKeyDown, true);
     return () => document.removeEventListener('keydown', handleHistoryKeyDown, true);
-  }, [blocks, pages, readOnly, setBlocks, setPages]);
+  }, [createEditorSnapshot, readOnly, restoreSnapshot]);
 
   const blockRows = useMemo(() => {
     const rows: Array<
@@ -604,6 +616,19 @@ export const Canvas = ({
   const storeImageFile = async (blockId: string, file: File) => {
     if (readOnly) return;
     try {
+      if (isFirebaseConfigured) {
+        const uploaded = await uploadBlockImage({
+          wsId: getWorkspaceId(),
+          docId,
+          pageId,
+          blockId,
+          file,
+        });
+        updateBlockAttachment(blockId, uploaded.url, uploaded.path, uploaded.name);
+        toast.success('Imagen subida correctamente');
+        return;
+      }
+
       const localUrl = await readFileAsDataUrl(file);
       updateBlockAttachment(blockId, localUrl, `store://${pageId}/${blockId}/${file.name}`, file.name);
       toast.success('Imagen guardada en el store');
@@ -617,8 +642,11 @@ export const Canvas = ({
     if (readOnly) return;
 
     if (url.startsWith('data:image/')) {
-      updateBlockAttachment(blockId, url, `store://${pageId}/${blockId}/${name}`, name);
-      toast.success('Imagen guardada en el store');
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const extension = blob.type.split('/')[1] || 'png';
+      const file = new File([blob], `${name}.${extension}`, { type: blob.type || 'image/png' });
+      await storeImageFile(blockId, file);
       return;
     }
 
@@ -717,7 +745,23 @@ export const Canvas = ({
         ? activeBlock.id
         : addBlock('text', pageId, activeBlock?.id || pageBlocks[pageBlocks.length - 1]?.id);
 
-    updateBlock(targetBlockId, normalizedText.replace(/\n/g, '<br>'));
+    updateBlock(targetBlockId, plainTextToHtml(normalizedText));
+    setActiveBlockId(targetBlockId);
+  };
+
+  const pasteRichContentIntoPage = (html: string) => {
+    if (readOnly) return;
+
+    const content = sanitizePastedHtml(html);
+    if (!content.trim()) return;
+
+    const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
+    const targetBlockId =
+      activeBlock && isTextEntryBlock(activeBlock.type) && getBlockPlainText(activeBlock.content) === ''
+        ? activeBlock.id
+        : addBlock('text', pageId, activeBlock?.id || pageBlocks[pageBlocks.length - 1]?.id);
+
+    updateBlock(targetBlockId, content);
     setActiveBlockId(targetBlockId);
   };
 
@@ -730,13 +774,23 @@ export const Canvas = ({
 
   const changeBlockTypeWithDefaults = (blockId: string, type: Block['type']) => {
     if (readOnly) return;
+    const currentBlock = blocks.find((block) => block.id === blockId);
     changeBlockType(blockId, type);
     if (isViewBlockType(type)) {
       updateBlock(blockId, stringifyViewContent(getDefaultViewContent(type)));
       return;
     }
 
-    const currentBlock = blocks.find((block) => block.id === blockId);
+    if (currentBlock && type === 'code' && currentBlock.type !== 'code') {
+      updateBlock(blockId, getBlockCodeText(currentBlock.content));
+      return;
+    }
+
+    if (currentBlock?.type === 'code' && type !== 'code') {
+      updateBlock(blockId, plainTextToHtml(currentBlock.content));
+      return;
+    }
+
     if (currentBlock && (type === 'bullet_list' || type === 'numbered_list')) {
       updateBlock(blockId, normalizeListContentForType(currentBlock.content, type));
     }
@@ -750,6 +804,15 @@ export const Canvas = ({
       event.stopPropagation();
       lastHandledPasteRef.current = event.timeStamp;
       pasteImageIntoPage(imageSource);
+      return;
+    }
+
+    const html = event.clipboardData.getData('text/html');
+    if (html.trim()) {
+      event.preventDefault();
+      event.stopPropagation();
+      lastHandledPasteRef.current = event.timeStamp;
+      pasteRichContentIntoPage(html);
       return;
     }
 
@@ -800,7 +863,13 @@ export const Canvas = ({
   };
 
   useEffect(() => {
-    if (!readOnly && pageBlocks.length === 0) {
+    if (pageBlocks.length > 0) {
+      if (pendingBlankBlockPageRef.current === pageId) pendingBlankBlockPageRef.current = null;
+      return;
+    }
+
+    if (!readOnly && pendingBlankBlockPageRef.current !== pageId) {
+      pendingBlankBlockPageRef.current = pageId;
       addBlock('text', pageId);
     }
   }, [addBlock, pageId, pageBlocks.length, readOnly]);
@@ -823,6 +892,13 @@ export const Canvas = ({
       if (imageSource) {
         event.preventDefault();
         pasteImageIntoPage(imageSource);
+        return;
+      }
+
+      const html = event.clipboardData.getData('text/html');
+      if (html.trim()) {
+        event.preventDefault();
+        pasteRichContentIntoPage(html);
         return;
       }
 
@@ -874,9 +950,9 @@ export const Canvas = ({
       onImageDrop={(event) => handleImageDrop(event, block)}
       onUploadImage={(file) => storeImageFile(block.id, file)}
       onUpdateImageLayout={(layout) => updateImageLayout(block.id, layout)}
+      onUpdateCodeLanguage={(language) => updateCodeLanguage(block.id, language)}
       onAddViewBelow={(type) => addViewBlockBelow(type, block.id)}
       onUpdate={(val, e) => handleTextChange(block.id, val, e)}
-      isSlashMenuOpen={slashMenu?.blockId === block.id}
       onOpenSlashMenu={(position) => setSlashMenu({ ...position, blockId: block.id })}
       onCloseSlashMenu={() => setSlashMenu(null)}
       onChangeType={(type) => changeBlockTypeWithDefaults(block.id, type)}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -21,7 +21,6 @@ import {
   CircleDot,
   Code,
   Columns3,
-  Circle,
   GripVertical,
   Heading1,
   Heading2,
@@ -48,6 +47,11 @@ import { BlockTypeSelector } from './BlockTypeSelector';
 import type { Block } from '../type/typeScript';
 import { ViewBlock } from './ViewBlock';
 import { isViewBlockType, type ViewBlockType } from './viewBlocks';
+import { plainTextToHtml, sanitizePastedHtml } from './richTextPaste';
+
+const CodeBlockEditor = lazy(() =>
+  import('./CodeBlockEditor').then((module) => ({ default: module.CodeBlockEditor }))
+);
 
 interface BlockWrapperProps {
   block: Block;
@@ -65,9 +69,9 @@ interface BlockWrapperProps {
   onImageDrop: (event: DragEvent<HTMLDivElement>) => void;
   onUploadImage: (file: File) => Promise<void>;
   onUpdateImageLayout: (layout: Pick<Block, 'imageWidth' | 'imageAlign' | 'imageFlow'>) => void;
+  onUpdateCodeLanguage: (language: string) => void;
   onAddViewBelow: (type: ViewBlockType) => void;
   onUpdate: (content: string, e?: ChangeEvent<HTMLTextAreaElement>) => void;
-  isSlashMenuOpen: boolean;
   onOpenSlashMenu: (position: { x: number; y: number }) => void;
   onCloseSlashMenu: () => void;
   onChangeType: (type: Block['type']) => void;
@@ -81,16 +85,16 @@ interface BlockWrapperProps {
 }
 
 const typeStyles: Record<Block['type'], string> = {
-  h1: 'text-4xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100',
-  h2: 'text-3xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-100',
-  h3: 'text-2xl font-semibold leading-tight text-slate-800 dark:text-slate-200',
-  text: 'text-lg font-normal text-slate-700 dark:text-slate-300',
-  title: 'text-4xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100',
-  todo: 'text-lg font-normal text-slate-700 dark:text-slate-300',
-  bullet_list: 'text-lg font-normal text-slate-700 dark:text-slate-300',
-  numbered_list: 'text-lg font-normal text-slate-700 dark:text-slate-300',
-  toggle_list: 'text-lg font-normal text-slate-700 dark:text-slate-300',
-  quote: 'text-xl font-medium italic text-slate-700 dark:text-slate-300',
+  h1: 'text-3xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 md:text-4xl',
+  h2: 'text-2xl font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-100 md:text-3xl',
+  h3: 'text-xl font-semibold leading-tight text-slate-800 dark:text-slate-200 md:text-2xl',
+  text: 'text-base font-normal leading-7 text-slate-700 dark:text-slate-300 md:text-lg',
+  title: 'text-3xl font-semibold leading-tight tracking-tight text-slate-950 dark:text-slate-100 md:text-4xl',
+  todo: 'text-base font-normal leading-7 text-slate-700 dark:text-slate-300 md:text-lg',
+  bullet_list: 'text-base font-normal leading-7 text-slate-700 dark:text-slate-300 md:text-lg',
+  numbered_list: 'text-base font-normal leading-7 text-slate-700 dark:text-slate-300 md:text-lg',
+  toggle_list: 'text-base font-normal leading-7 text-slate-700 dark:text-slate-300 md:text-lg',
+  quote: 'text-lg font-medium italic text-slate-700 dark:text-slate-300 md:text-xl',
   code: 'font-mono text-sm leading-6 text-slate-800 dark:text-slate-200',
   callout: 'text-base font-medium text-slate-800 dark:text-slate-200',
   card_notice: 'text-base font-normal text-slate-700 dark:text-slate-300',
@@ -256,231 +260,6 @@ const alignOptions = [
   { title: 'Aumentar sangria', icon: AlignRight, command: 'indent' },
 ];
 
-const sanitizePastedHtml = (html: string) => {
-  const parsed = new DOMParser().parseFromString(html, 'text/html');
-  const blockedTags = ['script', 'style', 'meta', 'link', 'iframe', 'object', 'embed'];
-  const allowedAttributes: Record<string, string[]> = {
-    a: ['href', 'target', 'rel'],
-    img: ['src', 'alt'],
-  };
-
-  blockedTags.forEach((tag) => {
-    parsed.querySelectorAll(tag).forEach((node) => node.remove());
-  });
-
-  parsed.body.querySelectorAll('*').forEach((element) => {
-    const tagName = element.tagName.toLowerCase();
-    const allowedForTag = allowedAttributes[tagName] || [];
-
-    Array.from(element.attributes).forEach((attribute) => {
-      const name = attribute.name.toLowerCase();
-      const value = attribute.value.trim().toLowerCase();
-
-      if (!allowedForTag.includes(name) || name.startsWith('on')) {
-        element.removeAttribute(attribute.name);
-        return;
-      }
-
-      if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
-        element.removeAttribute(attribute.name);
-      }
-    });
-
-    if (tagName === 'a' && element.getAttribute('href')) {
-      element.setAttribute('target', '_blank');
-      element.setAttribute('rel', 'noreferrer');
-    }
-  });
-
-  parsed.body.querySelectorAll('span').forEach((span) => {
-    span.replaceWith(...Array.from(span.childNodes));
-  });
-  parsed.body.querySelectorAll('li').forEach((item) => removeLeadingListMarker(item, parsed.body));
-  normalizePseudoLists(parsed.body);
-  cleanPastedListItems(parsed.body);
-  mergeAdjacentLists(parsed.body);
-
-  return parsed.body.innerHTML;
-};
-
-const normalizePastedText = (text: string) =>
-  text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/^\n+|\n+$/g, '');
-
-const listLinePattern = /^(\s*)(?:([\u2022\u25cf\u25cb\u25aa\u25a0\u2023\u2013-])|(\d+|[a-zA-Z])[.)])\s+(.+)$/;
-const leadingListMarkerPattern = /^(\s*)(?:[\u2022\u25cf\u25cb\u25aa\u25a0\u2023\u2013-]|(?:\d+|[a-zA-Z])[.)])\s*/;
-
-const removeLeadingListMarker = (element: Element, root: HTMLElement) => {
-  const walker = root.ownerDocument.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-  let textNode = walker.nextNode() as Text | null;
-
-  while (textNode) {
-    const value = textNode.nodeValue || '';
-    if (value.trim()) {
-      textNode.nodeValue = value.replace(leadingListMarkerPattern, '');
-      return;
-    }
-    textNode = walker.nextNode() as Text | null;
-  }
-};
-
-const hasPlainTextList = (text: string) =>
-  normalizePastedText(text)
-    .split('\n')
-    .some((line) => listLinePattern.test(line));
-
-const getPlainTextListLevel = (indent: string) => Math.min(4, Math.floor(indent.replace(/\t/g, '    ').length / 2));
-
-const plainTextListToHtml = (text: string) => {
-  const lines = normalizePastedText(text).split('\n');
-  const html: string[] = [];
-  const listStack: Array<'ul' | 'ol'> = [];
-  let openLi = false;
-
-  const closeLi = () => {
-    if (openLi) {
-      html.push('</li>');
-      openLi = false;
-    }
-  };
-
-  const closeToLevel = (level: number) => {
-    closeLi();
-    while (listStack.length > level) {
-      html.push(`</${listStack.pop()}>`);
-    }
-  };
-
-  lines.forEach((line) => {
-    const match = line.match(listLinePattern);
-    if (!match) {
-      if (!line.trim()) return;
-      closeToLevel(0);
-      html.push(escapeHtml(line.trim()), '<br>');
-      return;
-    }
-
-    const [, indent, unorderedMarker, orderedMarker, content] = match;
-    const listType: 'ul' | 'ol' = unorderedMarker ? 'ul' : 'ol';
-    const level = getPlainTextListLevel(indent);
-
-    closeLi();
-    while (listStack.length > level + 1) {
-      html.push(`</${listStack.pop()}>`);
-    }
-    while (listStack.length < level + 1) {
-      html.push(`<${listType}>`);
-      listStack.push(listType);
-    }
-    if (listStack[listStack.length - 1] !== listType) {
-      html.push(`</${listStack.pop()}>`, `<${listType}>`);
-      listStack.push(listType);
-    }
-
-    const value = orderedMarker && /^[a-zA-Z]$/.test(orderedMarker) ? orderedMarker : undefined;
-    html.push(`<li${value ? ` value="${escapeHtml(value)}"` : ''}>${escapeHtml(content.trim())}`);
-    openLi = true;
-  });
-
-  closeToLevel(0);
-  return html.join('').replace(/<br>$/, '');
-};
-
-const plainTextToHtml = (text: string) =>
-  hasPlainTextList(text)
-    ? plainTextListToHtml(text)
-    : normalizePastedText(text)
-        .split('\n')
-        .map((line) => escapeHtml(line))
-        .join('<br>');
-
-const normalizePseudoLists = (root: HTMLElement) => {
-  const blockSelector = 'p, div';
-  const blocks = Array.from(root.querySelectorAll(blockSelector)).filter(
-    (element) => !element.closest('ul, ol') && listLinePattern.test(element.textContent || '')
-  );
-
-  blocks.forEach((element) => {
-    const text = element.textContent || '';
-    const match = text.match(listLinePattern);
-    if (!match) return;
-
-    const [, , unorderedMarker, , content] = match;
-    const list = root.ownerDocument.createElement(unorderedMarker ? 'ul' : 'ol');
-    const item = root.ownerDocument.createElement('li');
-    item.innerHTML = element.innerHTML;
-    removeLeadingListMarker(item, root);
-    if (!item.textContent?.trim()) item.textContent = content.trim();
-    list.appendChild(item);
-    element.replaceWith(list);
-  });
-};
-
-const cleanPastedListItems = (root: HTMLElement) => {
-  root.querySelectorAll('li').forEach((item) => {
-    Array.from(item.children).forEach((child) => {
-      const tagName = child.tagName.toLowerCase();
-      const text = child.textContent?.trim() || '';
-
-      if ((tagName === 'p' || tagName === 'div') && !text) {
-        child.remove();
-        return;
-      }
-
-      if (tagName === 'p' || tagName === 'div') {
-        child.replaceWith(...Array.from(child.childNodes));
-      }
-    });
-
-    item.normalize();
-  });
-};
-
-const mergeAdjacentLists = (root: HTMLElement) => {
-  const mergeInContainer = (container: Element | DocumentFragment) => {
-    let current = container.firstChild;
-
-    while (current) {
-      if (current instanceof HTMLElement) mergeInContainer(current);
-
-      if (!(current instanceof HTMLElement) || !['UL', 'OL'].includes(current.tagName)) {
-        current = current.nextSibling;
-        continue;
-      }
-
-      let next = current.nextSibling;
-
-      while (next && next.nodeType === Node.TEXT_NODE && !next.textContent?.trim()) {
-        const emptyText = next;
-        next = next.nextSibling;
-        emptyText.remove();
-      }
-
-      while (next instanceof HTMLBRElement) {
-        const br = next;
-        next = next.nextSibling;
-        br.remove();
-      }
-
-      if (next instanceof HTMLElement && next.tagName === current.tagName) {
-        while (next.firstChild) {
-          current.appendChild(next.firstChild);
-        }
-        const listToRemove = next;
-        next = next.nextSibling;
-        listToRemove.remove();
-        continue;
-      }
-
-      current = current.nextSibling;
-    }
-  };
-
-  mergeInContainer(root);
-};
-
 const imageExtensionPattern = /\.(apng|avif|gif|jpe?g|png|svg|webp|bmp|ico|tiff?)(\?.*)?$/i;
 
 const isLikelyImageSource = (value: string) => {
@@ -532,6 +311,11 @@ const getCollapsedTitleFromHtml = (html: string) => {
 
 const hasStructuredListContent = (html: string) => /<(ul|ol)\b/i.test(html);
 
+const hasRichDocumentStructure = (editor: HTMLElement) =>
+  Boolean(editor.querySelector('p, div, h1, h2, h3, ul, ol, blockquote, pre, hr, table')) ||
+  editor.childNodes.length > 1 ||
+  /<br\s*\/?>/i.test(editor.innerHTML);
+
 const isSelectionAtStartOfElement = (element: HTMLElement) => {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
@@ -573,9 +357,9 @@ export const BlockWrapper = ({
   onImageDrop,
   onUploadImage,
   onUpdateImageLayout,
+  onUpdateCodeLanguage,
   onAddViewBelow,
   onUpdate,
-  isSlashMenuOpen,
   onOpenSlashMenu,
   onCloseSlashMenu,
   onChangeType,
@@ -594,13 +378,11 @@ export const BlockWrapper = ({
   const [toolbarPosition, setToolbarPosition] = useState<{ left: number; top: number } | null>(null);
   const [toolbarMenu, setToolbarMenu] = useState<'style' | 'decor' | 'align' | 'color' | 'highlight' | null>(null);
   const [showActivityMenu, setShowActivityMenu] = useState(false);
-  const [isGrabbed, setIsGrabbed] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const richTextRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageFrameRef = useRef<HTMLDivElement>(null);
   const blockContainerRef = useRef<HTMLDivElement>(null);
+  const didDragBlockRef = useRef(false);
   const imageWidth = block.imageWidth || 100;
   const imageAlign = block.imageAlign || 'center';
   const imageFlow = block.imageFlow || 'stack';
@@ -615,24 +397,29 @@ export const BlockWrapper = ({
   const isAccordion = canCollapse && Boolean(block.isAccordion || block.isCollapsed);
   const isCollapsed = isAccordion && Boolean(block.isCollapsed);
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [block.content, block.type]);
+  const positionBlockSelector = () => {
+    if (typeof window === 'undefined') return;
 
-  useEffect(() => {
-    if (isFocused && textareaRef.current) {
-      textareaRef.current.focus();
-      const length = textareaRef.current.value.length;
-      textareaRef.current.setSelectionRange(length, length);
-    }
-  }, [isFocused]);
+    const rect = blockContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
-  useEffect(() => {
-    if (!isFocused) setIsImageSelected(false);
-  }, [isFocused]);
+    const topSafeArea = 76;
+    const margin = 12;
+    const estimatedMenuHeight = Math.min(560, window.innerHeight - topSafeArea - margin);
+    const openUp = rect.top + estimatedMenuHeight > window.innerHeight - margin;
+    const preferredTop = openUp
+      ? Math.max(topSafeArea + margin, rect.bottom - estimatedMenuHeight)
+      : Math.max(topSafeArea + margin, rect.top + 8);
+    const top = Math.min(
+      preferredTop,
+      Math.max(topSafeArea + margin, window.innerHeight - estimatedMenuHeight - margin)
+    );
+
+    setSelectorPosition({
+      left: Math.max(margin, rect.left + 40),
+      top,
+    });
+  };
 
   useEffect(() => {
     const editor = richTextRef.current;
@@ -705,32 +492,6 @@ export const BlockWrapper = ({
   }, [readOnly, toolbarPosition]);
 
   useEffect(() => {
-    if (!isSlashMenuOpen) return;
-    setToolbarPosition(null);
-    setToolbarMenu(null);
-  }, [isSlashMenuOpen]);
-
-  useEffect(() => {
-    if (!showSelector || typeof window === 'undefined') return;
-
-    const rect = blockContainerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const topSafeArea = 76;
-    const margin = 12;
-    const estimatedMenuHeight = Math.min(560, window.innerHeight - topSafeArea - margin);
-    const openUp = rect.top + estimatedMenuHeight > window.innerHeight - margin;
-    const top = openUp
-      ? Math.max(topSafeArea + margin, rect.bottom - estimatedMenuHeight)
-      : Math.max(topSafeArea + margin, rect.top + 8);
-
-    setSelectorPosition({
-      left: Math.max(margin, rect.left + 40),
-      top,
-    });
-  }, [showSelector]);
-
-  useEffect(() => {
     if (!showSelector) return;
 
     const closeSelector = (event: MouseEvent | TouchEvent) => {
@@ -773,7 +534,7 @@ export const BlockWrapper = ({
 
   const blockShell =
     block.type === 'code'
-      ? 'rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-slate-950/50'
+      ? ''
       : block.type === 'callout'
         ? 'rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 dark:border-amber-900/30 dark:bg-amber-950/20'
         : block.type === 'card_notice'
@@ -923,9 +684,13 @@ export const BlockWrapper = ({
     const listParent = list?.parentElement;
     if (!editor || !list || !listParent) return false;
 
+    const nestedLists = Array.from(listItem.children).filter((child) =>
+      child.matches('ul, ol')
+    );
+    nestedLists.forEach((nestedList) => nestedList.remove());
+
     const textLine = document.createElement('div');
     textLine.innerHTML = listItem.textContent?.trim() ? listItem.innerHTML : '<br>';
-    textLine.querySelectorAll('ul, ol').forEach((nestedList) => nestedList.remove());
 
     const beforeList = list.cloneNode(false) as HTMLElement;
     while (list.firstElementChild && list.firstElementChild !== listItem) {
@@ -939,6 +704,7 @@ export const BlockWrapper = ({
     }
 
     listParent.insertBefore(textLine, list);
+    nestedLists.forEach((nestedList) => listParent.insertBefore(nestedList, list));
 
     if (!list.querySelector('li')) {
       list.remove();
@@ -1021,15 +787,24 @@ export const BlockWrapper = ({
       return;
     }
 
-    if (
-      event.key === 'Enter' &&
-      !event.shiftKey &&
-      !event.ctrlKey &&
-      !event.metaKey
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      insertRichParagraphBreak();
+    if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      const editor = richTextRef.current;
+      if (editor?.textContent?.trim() === '---') {
+        event.preventDefault();
+        event.stopPropagation();
+        onUpdate('');
+        onChangeType('divider');
+        return;
+      }
+
+      if (editor && hasRichDocumentStructure(editor)) {
+        event.preventDefault();
+        event.stopPropagation();
+        insertRichParagraphBreak();
+        return;
+      }
+
+      onKeyDown(event);
       return;
     }
 
@@ -1064,7 +839,7 @@ export const BlockWrapper = ({
     if (clipboardHasImage(event.clipboardData)) return;
 
     const html = event.clipboardData.getData('text/html');
-    if (/<\/?(ul|ol|li)\b/i.test(html)) {
+    if (html.trim()) {
       event.preventDefault();
       event.stopPropagation();
       insertRichHtml(html);
@@ -1079,17 +854,77 @@ export const BlockWrapper = ({
       return;
     }
 
-    if (!html) return;
+  };
 
-    event.preventDefault();
-    event.stopPropagation();
-    insertRichHtml(html);
+  const normalizeEditableLists = (editor: HTMLElement) => {
+    const lists = Array.from(editor.querySelectorAll('ul, ol'));
+
+    lists.forEach((list) => {
+      Array.from(list.childNodes).forEach((node) => {
+        if (node instanceof HTMLLIElement) return;
+
+        if (node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()) {
+          node.remove();
+          return;
+        }
+
+        const previousItem = node.previousSibling instanceof HTMLLIElement ? node.previousSibling : null;
+        if (previousItem && !previousItem.textContent?.trim()) {
+          previousItem.appendChild(node);
+          return;
+        }
+
+        const item = document.createElement('li');
+        list.insertBefore(item, node);
+        item.appendChild(node);
+      });
+    });
+
+    Array.from(editor.children).forEach((element) => {
+      const next = element.nextElementSibling;
+      if (!next || !['UL', 'OL'].includes(element.tagName) || next.tagName !== element.tagName) return;
+
+      while (next.firstChild) element.appendChild(next.firstChild);
+      next.remove();
+    });
+  };
+
+  const applyMarkdownShortcut = (editor: HTMLElement) => {
+    if (hasRichDocumentStructure(editor)) return false;
+
+    const shortcut = editor.textContent || '';
+    const nextType: Block['type'] | undefined =
+      shortcut === '# '
+        ? 'h1'
+        : shortcut === '## '
+          ? 'h2'
+          : shortcut === '### '
+            ? 'h3'
+            : /^[-*+] $/.test(shortcut)
+              ? 'bullet_list'
+              : shortcut === '1. '
+                ? 'numbered_list'
+                : /^(?:-\s*)?\[\s?\] $/.test(shortcut)
+                  ? 'todo'
+                  : shortcut === '> '
+                    ? 'quote'
+                    : undefined;
+
+    if (!nextType) return false;
+
+    editor.innerHTML = '';
+    onUpdate('');
+    onChangeType(nextType);
+    return true;
   };
 
   const handleRichTextInput = (event: FormEvent<HTMLDivElement>) => {
     if (readOnly) return;
 
     const editor = event.currentTarget;
+    normalizeEditableLists(editor);
+    if (applyMarkdownShortcut(editor)) return;
+
     onUpdate(editor.innerHTML);
 
     if (editor.textContent?.endsWith('/')) {
@@ -1115,7 +950,7 @@ export const BlockWrapper = ({
   };
 
   const isNarrowViewport = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
-  const showImageActions = !readOnly && (isImageSelected || isFocused);
+  const showImageActions = !readOnly && isFocused;
 
   const toolbarButtonClass =
     'flex h-10 min-w-10 items-center justify-center gap-1 rounded-lg px-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white md:h-9 md:min-w-9';
@@ -1128,28 +963,11 @@ export const BlockWrapper = ({
       ref={blockContainerRef}
       id={`block-${block.id}`}
       data-editor-block="true"
-      className={`group relative flex items-start rounded-md py-1 pl-12 transition-colors ${
+      className={`group relative flex items-start rounded-md py-1 pl-10 sm:pl-12 ${
         isInColumn ? 'md:pl-14' : 'md:-ml-10 md:pl-18'
-      } ${
-        block.type !== 'callout' && block.type !== 'card_notice' && block.type !== 'code' ? 'hover:bg-slate-50' : ''
       }`}
       onDragOver={readOnly ? undefined : onImageDragOver}
       onDrop={readOnly ? undefined : onImageDrop}
-      draggable={!readOnly && block.type === 'card_notice' && isGrabbed}
-      onDragStart={(event) => {
-        if (readOnly || block.type !== 'card_notice') return;
-        setIsDragging(true);
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', block.id);
-        onImageDragStart();
-      }}
-      onDragEnd={() => {
-        setIsDragging(false);
-        setIsGrabbed(false);
-        if (block.type === 'card_notice') {
-          onImageDragEnd();
-        }
-      }}
     >
       {dragPlacement === 'before' && (
         <div className="absolute left-8 right-0 top-0 h-0.5 rounded bg-slate-950" />
@@ -1162,29 +980,6 @@ export const BlockWrapper = ({
       )}
       {block.isFavorite && canFavorite && (
         <div className="absolute left-1 top-2 bottom-2 w-1 rounded-full bg-amber-400 md:hidden" />
-      )}
-      {!readOnly && isFocused && canFavorite && (
-        <div className="absolute right-1 top-1 z-30 flex rounded-full border border-slate-200 bg-white/95 p-0.5 shadow-sm dark:border-slate-700 dark:bg-[#2b2b2b]/95 md:hidden">
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onToggleFavorite();
-            }}
-            className={`inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold transition-colors ${
-              block.isFavorite
-                ? 'bg-amber-50 text-amber-700'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-            }`}
-            aria-pressed={Boolean(block.isFavorite)}
-            title={block.isFavorite ? 'Quitar favorito' : 'Marcar favorito'}
-          >
-            <Circle size={12} className={block.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-slate-400'} />
-            Favorito
-          </button>
-        </div>
       )}
       {!readOnly && (
         <div
@@ -1200,7 +995,7 @@ export const BlockWrapper = ({
             <button
               type="button"
               onClick={onToggleFavorite}
-              className={`hidden h-6 w-6 items-center justify-center rounded transition-all hover:bg-slate-100 dark:hover:bg-slate-800 md:flex ${
+              className={`flex h-8 w-8 items-center justify-center rounded transition-all hover:bg-slate-100 dark:hover:bg-slate-800 md:h-6 md:w-6 ${
                 block.isFavorite
                   ? 'text-amber-500'
                   : 'text-slate-300 hover:text-slate-400 dark:text-slate-600 dark:hover:text-slate-500'
@@ -1208,7 +1003,7 @@ export const BlockWrapper = ({
               title={block.isFavorite ? 'Quitar favorito' : 'Marcar favorito'}
             >
               <span
-                className={`h-2.5 w-2.5 rounded-full transition-all ${
+                className={`h-3 w-3 rounded-full transition-all md:h-2.5 md:w-2.5 ${
                   block.isFavorite
                     ? 'bg-amber-400 scale-110 shadow-sm'
                     : 'border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800'
@@ -1218,21 +1013,29 @@ export const BlockWrapper = ({
           )}
           <button
             type="button"
-            onClick={() => setShowSelector(!showSelector)}
-            onMouseEnter={() => {
-              if (block.type === 'card_notice') {
-                setIsGrabbed(true);
-              }
+            draggable={!readOnly}
+            onClick={() => {
+              if (didDragBlockRef.current) return;
+              if (!showSelector) positionBlockSelector();
+              setShowSelector((value) => !value);
             }}
-            onMouseLeave={() => {
-              if (!isDragging) {
-                setIsGrabbed(false);
-              }
+            onDragStart={(event) => {
+              event.stopPropagation();
+              didDragBlockRef.current = true;
+              event.dataTransfer.effectAllowed = 'move';
+              event.dataTransfer.setData('text/plain', block.id);
+              onImageDragStart();
+            }}
+            onDragEnd={() => {
+              onImageDragEnd();
+              window.setTimeout(() => {
+                didDragBlockRef.current = false;
+              });
             }}
             className={`flex h-8 w-8 items-center justify-center rounded text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:h-6 md:w-6 md:cursor-grab md:text-slate-300 ${
               showSelector || isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             }`}
-            title="Cambiar tipo de bloque"
+            title="Arrastrar para mover; clic para opciones"
           >
             <GripVertical size={16} />
           </button>
@@ -1805,19 +1608,22 @@ export const BlockWrapper = ({
         )}
 
         {block.type !== 'image' && block.type !== 'divider' && !isViewBlock && block.type === 'code' && (
-          <textarea
-            ref={textareaRef}
-            className={`w-full resize-none bg-transparent py-1 leading-relaxed transition-all placeholder:text-slate-300 focus:outline-none ${typeStyles[block.type]}`}
-            value={block.content}
-            onChange={(e) => {
-              if (!readOnly) onUpdate(e.target.value, e);
-            }}
-            onKeyDown={readOnly ? undefined : onKeyDown}
-            onFocus={onFocus}
-            readOnly={readOnly}
-            rows={1}
-            placeholder={placeholders[block.type]}
-          />
+          <Suspense
+            fallback={<div className="h-32 w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-[#404040] dark:bg-[#282828]" />}
+          >
+            <CodeBlockEditor
+              content={block.content}
+              language={block.codeLanguage}
+              isFocused={isFocused}
+              onChange={(value) => {
+                if (!readOnly) onUpdate(value);
+              }}
+              onLanguageChange={onUpdateCodeLanguage}
+              onKeyDown={onKeyDown}
+              onFocus={onFocus}
+              readOnly={readOnly}
+            />
+          </Suspense>
         )}
 
         {block.type !== 'image' && block.type !== 'divider' && !isViewBlock && block.type !== 'code' && (

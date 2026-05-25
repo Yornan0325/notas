@@ -21,6 +21,7 @@ interface CodaState {
     id: string,
     layout: Pick<Block, 'imageWidth' | 'imageAlign' | 'imageFlow'>
   ) => void;
+  updateCodeLanguage: (id: string, language: string) => void;
   moveBlock: (
     id: string,
     targetId: string,
@@ -446,6 +447,25 @@ export const useCodaStore = create<CodaState>()(
                   imageWidth: layout.imageWidth ?? block.imageWidth,
                   imageAlign: layout.imageAlign ?? block.imageAlign,
                   imageFlow: layout.imageFlow ?? block.imageFlow,
+                  synced: false,
+                }
+              : block
+          ),
+          pages: state.pages.map((page) =>
+            state.blocks.some((block) => block.id === id && block.pageId === page.id)
+              ? { ...page, updatedAt: now(), synced: false }
+              : page
+          ),
+        })),
+
+      updateCodeLanguage: (id, language) =>
+        set((state) => ({
+          blocks: state.blocks.map((block) =>
+            block.id === id
+              ? {
+                  ...block,
+                  codeLanguage: language,
+                  updatedAt: now(),
                   synced: false,
                 }
               : block

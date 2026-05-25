@@ -63,6 +63,17 @@ const EditorPage = () => {
   const isSharedReadOnly = isSharedFromAnotherWorkspace && currentPage?.sharePermission !== 'edit';
 
   useEffect(() => {
+    const mobileViewport = window.matchMedia('(max-width: 767px)');
+    const closeSidebarOnMobile = (event: MediaQueryListEvent | MediaQueryList) => {
+      if (event.matches) setIsSidebarCollapsed(true);
+    };
+
+    closeSidebarOnMobile(mobileViewport);
+    mobileViewport.addEventListener('change', closeSidebarOnMobile);
+    return () => mobileViewport.removeEventListener('change', closeSidebarOnMobile);
+  }, []);
+
+  useEffect(() => {
     if (!docId || initializedDocIdRef.current === docId) return;
     if (internalPages.length > 0) {
       initializedDocIdRef.current = docId;
@@ -142,7 +153,7 @@ const EditorPage = () => {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto bg-white">
+        <main data-editor-surface="true" className="min-h-0 flex-1 overflow-y-auto bg-white">
           {visibleActivePageId ? (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
               <Canvas

@@ -62,6 +62,14 @@ textarea::-webkit-scrollbar {
   margin-bottom: 0;
 }
 
+.rich-text-editor > :first-child {
+  margin-top: 0;
+}
+
+.rich-text-editor > :last-child {
+  margin-bottom: 0;
+}
+
 .rich-text-editor h1,
 .rich-text-editor h2,
 .rich-text-editor h3 {
@@ -87,8 +95,15 @@ textarea::-webkit-scrollbar {
 }
 
 .rich-text-editor blockquote {
+  margin: 0.5rem 0 0.8rem;
   border-left: 4px solid #cbd5e1;
   padding-left: 1rem;
+}
+
+.rich-text-editor hr {
+  margin: 1.25rem 0;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
 }
 
 .rich-text-editor code {
@@ -105,6 +120,86 @@ textarea::-webkit-scrollbar {
   background: #f1f5f9;
   padding: 0.75rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.code-editor pre,
+.code-editor textarea {
+  tab-size: 2;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.code-editor pre {
+  background: transparent;
+  color: #334155;
+}
+
+.code-editor textarea,
+.dark .code-editor textarea {
+  background-color: transparent !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+}
+
+.code-editor textarea::placeholder {
+  color: #94a3b8;
+  -webkit-text-fill-color: #94a3b8;
+}
+
+.code-editor .token.comment,
+.code-editor .token.prolog,
+.code-editor .token.doctype {
+  color: #64748b;
+  font-style: italic;
+}
+
+.code-editor .token.punctuation {
+  color: #64748b;
+}
+
+.code-editor .token.property,
+.code-editor .token.tag,
+.code-editor .token.constant,
+.code-editor .token.symbol,
+.code-editor .token.deleted {
+  color: #dc2626;
+}
+
+.code-editor .token.boolean,
+.code-editor .token.number {
+  color: #c2410c;
+}
+
+.code-editor .token.selector,
+.code-editor .token.attr-name,
+.code-editor .token.string,
+.code-editor .token.char,
+.code-editor .token.builtin,
+.code-editor .token.inserted {
+  color: #15803d;
+}
+
+.code-editor .token.operator,
+.code-editor .token.entity,
+.code-editor .token.url,
+.code-editor .language-css .token.string {
+  color: #0369a1;
+}
+
+.code-editor .token.atrule,
+.code-editor .token.attr-value,
+.code-editor .token.keyword {
+  color: #7c3aed;
+}
+
+.code-editor .token.function,
+.code-editor .token.class-name {
+  color: #2563eb;
+}
+
+.code-editor .token.regex,
+.code-editor .token.important,
+.code-editor .token.variable {
+  color: #b45309;
 }
 
 .rich-text-editor ul,
@@ -202,12 +297,15 @@ textarea::-webkit-scrollbar {
 
 .dark .bg-white,
 .dark .bg-white\/95 {
-  background-color: rgb(34 34 34 / 0.96) !important;
+  background-color: rgb(41 41 41 / 0.98) !important;
 }
 
-.dark .bg-slate-50,
+.dark .bg-slate-50 {
+  background-color: #252525 !important;
+}
+
 .dark .hover\:bg-slate-50:hover {
-  background-color: #222222 !important;
+  background-color: #303030 !important;
 }
 
 .dark .bg-slate-100,
@@ -230,7 +328,7 @@ textarea::-webkit-scrollbar {
 .dark .text-slate-700,
 .dark .text-slate-600,
 .dark .text-slate-500 {
-  color: #cbd5e1 !important;
+  color: #d1d5db !important;
 }
 
 .dark .text-slate-400,
@@ -242,13 +340,13 @@ textarea::-webkit-scrollbar {
 .dark .border-slate-200,
 .dark .border-slate-100,
 .dark .border-gray-100 {
-  border-color: #334155 !important;
+  border-color: #404040 !important;
 }
 
 .dark input,
 .dark select,
 .dark textarea {
-  border-color: #334155;
+  border-color: #404040;
   background-color: #222222;
   color: #f8fafc;
 }
@@ -265,7 +363,7 @@ textarea::-webkit-scrollbar {
 }
 
 .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #334155 !important;
+  border-color: #404040 !important;
 }
 
 .dark .shadow-sm,
@@ -284,21 +382,105 @@ textarea::-webkit-scrollbar {
 
 .dark .rich-text-editor code,
 .dark .rich-text-editor pre {
-  background: #1e293b;
+  background: #303030;
   color: #e2e8f0;
 }
 
+.dark .code-editor pre {
+  color: #e5e7eb;
+}
+
+.dark .code-editor .token.comment,
+.dark .code-editor .token.prolog,
+.dark .code-editor .token.doctype,
+.dark .code-editor .token.punctuation {
+  color: #94a3b8;
+}
+
+.dark .code-editor .token.property,
+.dark .code-editor .token.tag,
+.dark .code-editor .token.constant,
+.dark .code-editor .token.symbol,
+.dark .code-editor .token.deleted {
+  color: #f87171;
+}
+
+.dark .code-editor .token.boolean,
+.dark .code-editor .token.number,
+.dark .code-editor .token.regex,
+.dark .code-editor .token.important,
+.dark .code-editor .token.variable {
+  color: #fb923c;
+}
+
+.dark .code-editor .token.selector,
+.dark .code-editor .token.attr-name,
+.dark .code-editor .token.string,
+.dark .code-editor .token.char,
+.dark .code-editor .token.builtin,
+.dark .code-editor .token.inserted {
+  color: #86efac;
+}
+
+.dark .code-editor .token.operator,
+.dark .code-editor .token.entity,
+.dark .code-editor .token.url,
+.dark .code-editor .language-css .token.string {
+  color: #7dd3fc;
+}
+
+.dark .code-editor .token.atrule,
+.dark .code-editor .token.attr-value,
+.dark .code-editor .token.keyword {
+  color: #c4b5fd;
+}
+
+.dark .code-editor .token.function,
+.dark .code-editor .token.class-name {
+  color: #60a5fa;
+}
+
 .dark .rich-text-editor th {
-  background: #1e293b;
+  background: #303030;
 }
 
 .dark .rich-text-editor th,
 .dark .rich-text-editor td {
-  border-color: #334155;
+  border-color: #404040;
+}
+
+.dark .rich-text-editor hr {
+  border-top-color: #404040;
+}
+
+.dark [data-editor-surface="true"] {
+  background-color: #222222 !important;
 }
 
 .dark [data-collapsible-content="true"] .rich-text-editor,
 .dark [data-collapsible-content="true"] .rich-text-editor * {
   background-color: transparent !important;
   color: inherit !important;
+}
+
+@media (max-width: 767px) {
+  .rich-text-editor h1 {
+    font-size: 1.75rem;
+    line-height: 2.1rem;
+  }
+
+  .rich-text-editor h2 {
+    font-size: 1.4rem;
+    line-height: 1.8rem;
+  }
+
+  .rich-text-editor h3 {
+    font-size: 1.2rem;
+    line-height: 1.6rem;
+  }
+
+  .rich-text-editor ul,
+  .rich-text-editor ol {
+    padding-left: 1.2em;
+  }
 }

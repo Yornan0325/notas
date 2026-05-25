@@ -39,6 +39,7 @@ export interface Block {
   imageWidth?: number;
   imageAlign?: 'left' | 'center' | 'right';
   imageFlow?: 'stack' | 'columns';
+  codeLanguage?: string;
   ownerWorkspaceId?: string;
   sharePermission?: SharePermission;
 }
