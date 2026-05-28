@@ -508,11 +508,11 @@ export const ViewBlock = ({
               className="group absolute inset-y-0 -ml-1.5 w-3"
               style={{ left: `${boundary}px` }}
             >
-              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-300/80 dark:bg-slate-600/90 group-hover:bg-blue-500" />
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-300/80 transition-colors duration-150 peer-hover:bg-slate-500 dark:bg-slate-600/90 dark:peer-hover:bg-slate-400" />
               <button
                 type="button"
                 onMouseDown={(event) => startColumnResize(event, columnIndex)}
-                className="pointer-events-auto absolute inset-y-0 left-0 w-full cursor-col-resize bg-transparent"
+                className="peer pointer-events-auto absolute inset-y-0 left-0 w-full cursor-col-resize bg-transparent"
                 title="Arrastrar columna"
                 aria-label={`Redimensionar columna ${columnIndex + 1}`}
               />
