@@ -351,6 +351,14 @@ textarea::-webkit-scrollbar {
   color: #f8fafc;
 }
 
+.dark .view-cell-input,
+.dark .view-cell-input:focus,
+.dark .view-cell-input:active {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: #94a3b8;

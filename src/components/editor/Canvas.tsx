@@ -8,7 +8,14 @@ import { BlockWrapper } from './BlockWrapper';
 import { plainTextToHtml, sanitizePastedHtml } from './richTextPaste';
 import { SlashMenu } from './SlashMenu';
 import type { Block, Page } from '../type/typeScript';
-import { getDefaultViewContent, isViewBlockType, parseViewContent, stringifyViewContent, type ViewBlockType } from './viewBlocks';
+import {
+  getDefaultViewContent,
+  isViewBlockType,
+  parseClipboardTableToViewContent,
+  parseViewContent,
+  stringifyViewContent,
+  type ViewBlockType,
+} from './viewBlocks';
 import { GitCommitVertical, Star } from 'lucide-react';
 
 const readFileAsDataUrl = (file: File) =>
@@ -739,6 +746,20 @@ export const Canvas = ({
       .replace(/^\n+|\n+$/g, '');
     if (!normalizedText.trim()) return;
 
+    const tableContent = parseClipboardTableToViewContent({ text: normalizedText });
+    if (tableContent) {
+      const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
+      const targetBlockId =
+        activeBlock && isTextEntryBlock(activeBlock.type) && getBlockPlainText(activeBlock.content) === ''
+          ? activeBlock.id
+          : addBlock('view_table', pageId, activeBlock?.id || pageBlocks[pageBlocks.length - 1]?.id);
+
+      changeBlockType(targetBlockId, 'view_table');
+      updateBlock(targetBlockId, stringifyViewContent(tableContent));
+      setActiveBlockId(targetBlockId);
+      return;
+    }
+
     const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
     const targetBlockId =
       activeBlock && isTextEntryBlock(activeBlock.type) && getBlockPlainText(activeBlock.content) === ''
@@ -751,6 +772,20 @@ export const Canvas = ({
 
   const pasteRichContentIntoPage = (html: string) => {
     if (readOnly) return;
+
+    const tableContent = parseClipboardTableToViewContent({ html });
+    if (tableContent) {
+      const activeBlock = pageBlocks.find((block) => block.id === activeBlockId);
+      const targetBlockId =
+        activeBlock && isTextEntryBlock(activeBlock.type) && getBlockPlainText(activeBlock.content) === ''
+          ? activeBlock.id
+          : addBlock('view_table', pageId, activeBlock?.id || pageBlocks[pageBlocks.length - 1]?.id);
+
+      changeBlockType(targetBlockId, 'view_table');
+      updateBlock(targetBlockId, stringifyViewContent(tableContent));
+      setActiveBlockId(targetBlockId);
+      return;
+    }
 
     const content = sanitizePastedHtml(html);
     if (!content.trim()) return;
@@ -798,6 +833,10 @@ export const Canvas = ({
 
   const handleCanvasPaste = (event: ClipboardEvent<HTMLDivElement>) => {
     if (readOnly) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, [contenteditable="true"]')) return;
+
     const imageSource = getImageFromClipboard(event.clipboardData);
     if (imageSource) {
       event.preventDefault();
@@ -818,9 +857,6 @@ export const Canvas = ({
 
     const text = getPlainTextFromClipboard(event.clipboardData);
     if (!text) return;
-
-    const target = event.target as HTMLElement;
-    if (target.closest('input, textarea, [contenteditable="true"]')) return;
 
     event.preventDefault();
     event.stopPropagation();

@@ -276,12 +276,12 @@ export const ViewBlock = ({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-collapse text-left">
         <thead>
-          <tr className="border-b border-slate-200 text-sm font-medium text-slate-500">
+          <tr className="border-b border-slate-200 text-sm font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400">
             {view.columns.map((column, columnIndex) => (
               <th
                 key={columnIndex}
                 className={`group/column min-w-[180px] px-2 py-2 ${
-                  draggedColumnIndex === columnIndex ? 'bg-slate-100/70' : ''
+                  draggedColumnIndex === columnIndex ? 'bg-slate-100/70 dark:bg-slate-800/60' : ''
                 }`}
                 onDragOver={(event) => {
                   if (readOnly || draggedColumnIndex === null) return;
@@ -303,7 +303,7 @@ export const ViewBlock = ({
                         setDraggedColumnIndex(columnIndex);
                       }}
                       onDragEnd={() => setDraggedColumnIndex(null)}
-                      className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                      className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
                       title="Mover columna"
                       aria-label="Mover columna"
                     >
@@ -321,14 +321,14 @@ export const ViewBlock = ({
                         ),
                       })
                     }
-                    className="min-w-0 flex-1 bg-transparent px-1 py-1 font-medium outline-none ring-0 focus:outline-none focus:ring-0"
+                    className="view-cell-input min-w-0 flex-1 bg-transparent px-1 py-1 font-medium text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
                   />
                   {!readOnly && (
                     <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/column:opacity-100 focus-within:opacity-100">
                       <button
                         type="button"
                         onClick={() => addColumn(columnIndex)}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-950"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                         title="Agregar columna"
                         aria-label="Agregar columna"
                       >
@@ -338,7 +338,7 @@ export const ViewBlock = ({
                         type="button"
                         onClick={() => removeColumn(columnIndex)}
                         disabled={view.columns.length <= 1}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:text-slate-500 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:disabled:hover:text-slate-500"
                         title="Eliminar columna"
                         aria-label="Eliminar columna"
                       >
@@ -354,7 +354,7 @@ export const ViewBlock = ({
                 <button
                   type="button"
                   onClick={() => addColumn()}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-950"
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                   title="Agregar columna"
                   aria-label="Agregar columna"
                 >
@@ -368,8 +368,8 @@ export const ViewBlock = ({
           {visibleRows.map((row, rowIndex) => (
             <tr
               key={rowIndex}
-              className={`group/row border-b border-slate-200 ${
-                draggedRowIndex === rowIndex ? 'bg-slate-100/70' : ''
+              className={`group/row border-b border-slate-200 dark:border-slate-800 ${
+                draggedRowIndex === rowIndex ? 'bg-slate-100/70 dark:bg-slate-800/60' : ''
               }`}
               onDragOver={(event) => {
                 if (readOnly || draggedRowIndex === null) return;
@@ -389,7 +389,7 @@ export const ViewBlock = ({
                     onChange={(event) =>
                       commit(updateCellValue(view, rowIndex, columnIndex, event.target.value))
                     }
-                    className="w-full bg-transparent px-1 py-1 text-sm font-medium text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0"
+                    className="view-cell-input w-full bg-transparent px-1 py-1 text-sm font-medium text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
                     placeholder="+"
                   />
                 </td>
@@ -405,7 +405,7 @@ export const ViewBlock = ({
                         setDraggedRowIndex(rowIndex);
                       }}
                       onDragEnd={() => setDraggedRowIndex(null)}
-                      className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
+                      className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
                       title="Mover fila"
                       aria-label="Mover fila"
                     >
@@ -414,7 +414,7 @@ export const ViewBlock = ({
                   <button
                     type="button"
                     onClick={() => removeRow(rowIndex)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-600"
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-600 dark:text-slate-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
                     title="Eliminar fila"
                     aria-label="Eliminar fila"
                   >
@@ -431,7 +431,7 @@ export const ViewBlock = ({
         <button
           type="button"
           onClick={addRow}
-          className="mt-2 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+          className="mt-2 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
           title="Agregar fila"
         >
           <Plus size={18} />
@@ -443,9 +443,9 @@ export const ViewBlock = ({
   const renderCards = () => (
     <div className="grid gap-3 md:grid-cols-2">
       {visibleRows.map((row, rowIndex) => (
-        <div key={rowIndex} className="rounded-md border border-slate-200 bg-white p-3">
+        <div key={rowIndex} className="rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-transparent">
           {view.columns.map((column, columnIndex) => (
-            <label key={columnIndex} className="mb-2 block text-xs font-medium uppercase text-slate-400">
+            <label key={columnIndex} className="mb-2 block text-xs font-medium uppercase text-slate-400 dark:text-slate-500">
               {column}
               <input
                 value={row[columnIndex] || ''}
@@ -453,7 +453,7 @@ export const ViewBlock = ({
                 onChange={(event) =>
                   commit(updateCellValue(view, rowIndex, columnIndex, event.target.value))
                 }
-                className="mt-1 w-full bg-transparent px-2 py-1.5 text-sm normal-case text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0"
+                className="view-cell-input mt-1 w-full bg-transparent px-2 py-1.5 text-sm normal-case text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
               />
             </label>
           ))}
@@ -465,15 +465,15 @@ export const ViewBlock = ({
   const renderBoard = () => (
     <div className="grid gap-3 md:grid-cols-3">
       {['Pendiente', 'En proceso', 'Listo'].map((status) => (
-        <div key={status} className="rounded-md border border-slate-200 bg-slate-50 p-2">
-          <p className="mb-2 text-sm font-semibold text-slate-600">{status}</p>
+        <div key={status} className="rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40">
+          <p className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-300">{status}</p>
           {visibleRows.map((row, rowIndex) => (
-            <div key={rowIndex} className="mb-2 rounded-md border border-slate-200 bg-white p-2 text-sm">
+            <div key={rowIndex} className="mb-2 rounded-md border border-slate-200 bg-white p-2 text-sm dark:border-slate-800 dark:bg-transparent">
               <input
                 value={row[0] || ''}
                 readOnly={readOnly}
                 onChange={(event) => commit(updateCellValue(view, rowIndex, 0, event.target.value))}
-                className="w-full bg-transparent font-medium outline-none"
+                className="view-cell-input w-full bg-transparent font-medium text-slate-900 outline-none dark:text-slate-100"
                 placeholder="Nueva tarjeta"
               />
             </div>
@@ -493,16 +493,16 @@ export const ViewBlock = ({
               value={row[0] || ''}
               readOnly={readOnly}
               onChange={(event) => commit(updateCellValue(view, rowIndex, 0, event.target.value))}
-              className="bg-transparent px-1 py-1 font-medium outline-none ring-0 focus:outline-none focus:ring-0"
+              className="view-cell-input bg-transparent px-1 py-1 font-medium text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
             />
-            <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-slate-900" style={{ width: `${value}%` }} />
+            <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="h-full rounded-full bg-slate-900 dark:bg-slate-200" style={{ width: `${value}%` }} />
             </div>
             <input
               value={row[1] || ''}
               readOnly={readOnly}
               onChange={(event) => commit(updateCellValue(view, rowIndex, 1, event.target.value))}
-              className="bg-transparent px-1 py-1 text-right outline-none ring-0 focus:outline-none focus:ring-0"
+              className="view-cell-input bg-transparent px-1 py-1 text-right text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
             />
           </div>
         );
@@ -521,7 +521,7 @@ export const ViewBlock = ({
   return (
     <div
       ref={viewBlockRef}
-      className={`relative w-full rounded-md bg-white ${
+      className={`relative w-full rounded-md bg-white dark:bg-transparent ${
         isFullscreen ? 'fixed inset-3 z-[150] overflow-auto p-6 shadow-2xl md:inset-8' : ''
       }`}
       onFocus={onFocus}
@@ -542,7 +542,7 @@ export const ViewBlock = ({
           <button
             type="button"
             onClick={() => setShowMenu((value) => !value)}
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-950"
+            className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-950 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
             aria-label="Opciones de vista"
           >
             <MoreVertical size={18} />
@@ -553,7 +553,7 @@ export const ViewBlock = ({
             value={view.title}
             readOnly={readOnly}
             onChange={(event) => commit({ ...view, title: event.target.value })}
-            className={`min-w-0 flex-1 bg-transparent text-slate-950 outline-none ${titleClass}`}
+            className={`min-w-0 flex-1 bg-transparent text-slate-950 outline-none dark:text-slate-100 ${titleClass}`}
             placeholder={getViewLabel(type)}
           />
         )}
@@ -561,14 +561,14 @@ export const ViewBlock = ({
       </div>
 
       {showMenu && !readOnly && (
-        <div className="absolute left-0 top-10 z-[80] w-[312px] rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+        <div className="absolute left-0 top-10 z-[80] w-[312px] rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-[#252525]">
           <button
             type="button"
             onClick={() => setShowTitle((value) => !value)}
-            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <span className="flex items-center gap-3">
-              <Type size={19} className="text-slate-500" />
+              <Type size={19} className="text-slate-500 dark:text-slate-400" />
               Título
             </span>
             <span className={`h-5 w-9 rounded-full p-0.5 ${showTitle ? 'bg-blue-600' : 'bg-slate-300'}`}>
@@ -578,18 +578,18 @@ export const ViewBlock = ({
           <button
             type="button"
             onClick={cycleTitleStyle}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Type size={19} className="text-slate-500" />
+            <Type size={19} className="text-slate-500 dark:text-slate-400" />
             Estilo de título
           </button>
-          <div className="my-2 border-t border-dashed border-slate-200" />
+          <div className="my-2 border-t border-dashed border-slate-200 dark:border-slate-700" />
           <button
             type="button"
             onClick={() => setShowNewView((value) => !value)}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Table2 size={19} className="text-slate-500" />
+            <Table2 size={19} className="text-slate-500 dark:text-slate-400" />
             Añadir vista
           </button>
           <button
@@ -598,42 +598,42 @@ export const ViewBlock = ({
               setIsFullscreen((value) => !value);
               setShowMenu(false);
             }}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Expand size={19} className="text-slate-500" />
+            <Expand size={19} className="text-slate-500 dark:text-slate-400" />
             {isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
           </button>
           <button
             type="button"
             onClick={() => csvInputRef.current?.click()}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <FileInput size={19} className="text-slate-500" />
+            <FileInput size={19} className="text-slate-500 dark:text-slate-400" />
             Importar CSV
           </button>
           <button
             type="button"
             onClick={exportCsv}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Download size={19} className="text-slate-500" />
+            <Download size={19} className="text-slate-500 dark:text-slate-400" />
             Exportar CSV
           </button>
           <button
             type="button"
             onClick={copyView}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Copy size={19} className="text-slate-500" />
+            <Copy size={19} className="text-slate-500 dark:text-slate-400" />
             Copiar
           </button>
-          <div className="my-2 border-t border-dashed border-slate-200" />
+          <div className="my-2 border-t border-dashed border-slate-200 dark:border-slate-700" />
           <button
             type="button"
             onClick={copyLink}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            <Link size={19} className="text-slate-500" />
+            <Link size={19} className="text-slate-500 dark:text-slate-400" />
             Copiar link
           </button>
           <button

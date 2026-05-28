@@ -46,7 +46,13 @@ import {
 import { BlockTypeSelector } from './BlockTypeSelector';
 import type { Block } from '../type/typeScript';
 import { ViewBlock } from './ViewBlock';
-import { isViewBlockType, parseViewContent, type ViewBlockType } from './viewBlocks';
+import {
+  isViewBlockType,
+  parseClipboardTableToViewContent,
+  parseViewContent,
+  stringifyViewContent,
+  type ViewBlockType,
+} from './viewBlocks';
 import { plainTextToHtml, sanitizePastedHtml } from './richTextPaste';
 
 const CodeBlockEditor = lazy(() =>
@@ -851,6 +857,16 @@ export const BlockWrapper = ({
     if (clipboardHasImage(event.clipboardData)) return;
 
     const html = event.clipboardData.getData('text/html');
+    const text = event.clipboardData.getData('text/plain');
+    const tableContent = parseClipboardTableToViewContent({ html, text });
+    if (tableContent) {
+      event.preventDefault();
+      event.stopPropagation();
+      onChangeType('view_table');
+      onUpdate(stringifyViewContent(tableContent));
+      return;
+    }
+
     if (html.trim()) {
       event.preventDefault();
       event.stopPropagation();
@@ -858,7 +874,6 @@ export const BlockWrapper = ({
       return;
     }
 
-    const text = event.clipboardData.getData('text/plain');
     if (text.trim()) {
       event.preventDefault();
       event.stopPropagation();
