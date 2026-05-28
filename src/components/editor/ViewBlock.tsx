@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import {
   Copy,
   Download,
@@ -124,11 +125,29 @@ export const ViewBlock = ({
   const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
   const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
   const viewBlockRef = useRef<HTMLDivElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const resizingColumnRef = useRef<number | null>(null);
+  const resizeStartXRef = useRef(0);
+  const resizeStartWidthsRef = useRef<number[]>([]);
   const view = useMemo(() => parseViewContent(type, content), [content, type]);
 
   const commit = (nextView: ViewBlockContent) => onUpdate(stringifyViewContent(nextView));
   const visibleRows = view.rows.length ? view.rows : [view.columns.map(() => '')];
+  const normalizedColumnWidths = useMemo(
+    () =>
+      view.columns.map((_, index) => {
+        const width = Number(view.columnWidths?.[index]);
+        return Number.isFinite(width) && width > 0 ? width : 280;
+      }),
+    [view.columnWidths, view.columns]
+  );
+  const tableContentWidth = normalizedColumnWidths.reduce((total, width) => total + width, 0);
+  const actionColumnWidth = readOnly ? 0 : 64;
+  const tableWidth = Math.max(640, tableContentWidth + actionColumnWidth);
+  const columnBoundaries = normalizedColumnWidths.map((_, index) =>
+    normalizedColumnWidths.slice(0, index + 1).reduce((total, width) => total + width, 0)
+  );
   const titleClass =
     titleStyle === 'large'
       ? 'text-3xl font-bold tracking-tight'
@@ -174,10 +193,13 @@ export const ViewBlock = ({
     const insertIndex = Math.max(0, afterColumnIndex + 1);
     const nextColumns = [...view.columns];
     nextColumns.splice(insertIndex, 0, `Columna ${view.columns.length + 1}`);
+    const nextColumnWidths = [...normalizedColumnWidths];
+    nextColumnWidths.splice(insertIndex, 0, 280);
 
     commit({
       ...view,
       columns: nextColumns,
+      columnWidths: nextColumnWidths,
       rows: visibleRows.map((row) => {
         const nextRow = view.columns.map((_, index) => row[index] || '');
         nextRow.splice(insertIndex, 0, '');
@@ -192,6 +214,7 @@ export const ViewBlock = ({
     commit({
       ...view,
       columns: view.columns.filter((_, index) => index !== columnIndex),
+      columnWidths: normalizedColumnWidths.filter((_, index) => index !== columnIndex),
       rows: visibleRows.map((row) =>
         view.columns
           .map((_, index) => row[index] || '')
@@ -204,12 +227,16 @@ export const ViewBlock = ({
     if (fromIndex === toIndex || toIndex < 0 || toIndex >= view.columns.length) return;
 
     const nextColumns = [...view.columns];
+    const nextColumnWidths = [...normalizedColumnWidths];
     const [movedColumn] = nextColumns.splice(fromIndex, 1);
+    const [movedWidth] = nextColumnWidths.splice(fromIndex, 1);
     nextColumns.splice(toIndex, 0, movedColumn);
+    nextColumnWidths.splice(toIndex, 0, movedWidth);
 
     commit({
       ...view,
       columns: nextColumns,
+      columnWidths: nextColumnWidths,
       rows: visibleRows.map((row) => {
         const normalizedRow = view.columns.map((_, index) => row[index] || '');
         const [movedCell] = normalizedRow.splice(fromIndex, 1);
@@ -266,21 +293,67 @@ export const ViewBlock = ({
         ...view,
         columns,
         rows: dataRows.length ? dataRows : [columns.map(() => '')],
+        columnWidths: columns.map(() => 280),
       });
       setShowMenu(false);
     };
     reader.readAsText(file);
   };
 
+  const stopColumnResize = () => {
+    resizingColumnRef.current = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    window.removeEventListener('mousemove', handleColumnResizeMove);
+    window.removeEventListener('mouseup', stopColumnResize);
+  };
+
+  const handleColumnResizeMove = (event: MouseEvent) => {
+    const columnIndex = resizingColumnRef.current;
+    if (columnIndex === null) return;
+
+    const deltaX = event.clientX - resizeStartXRef.current;
+    const nextWidths = [...resizeStartWidthsRef.current];
+    nextWidths[columnIndex] = Math.max(0, resizeStartWidthsRef.current[columnIndex] + deltaX);
+
+    commit({
+      ...view,
+      columnWidths: nextWidths,
+    });
+  };
+
+  const startColumnResize = (event: ReactMouseEvent<HTMLButtonElement>, columnIndex: number) => {
+    if (readOnly) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    resizingColumnRef.current = columnIndex;
+    resizeStartXRef.current = event.clientX;
+    resizeStartWidthsRef.current = [...normalizedColumnWidths];
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleColumnResizeMove);
+    window.addEventListener('mouseup', stopColumnResize);
+  };
+
   const renderTable = () => (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-left">
+    <div ref={tableContainerRef} className="relative overflow-x-auto">
+      <table
+        className="border-collapse text-left table-fixed"
+        style={{ width: `${tableWidth}px`, minWidth: `${tableWidth}px` }}
+      >
+        <colgroup>
+          {view.columns.map((_, columnIndex) => (
+            <col key={`col-${columnIndex}`} style={{ width: `${normalizedColumnWidths[columnIndex]}px` }} />
+          ))}
+          {!readOnly && <col style={{ width: `${actionColumnWidth}px` }} />}
+        </colgroup>
         <thead>
           <tr className="border-b border-slate-200 text-sm font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400">
             {view.columns.map((column, columnIndex) => (
               <th
                 key={columnIndex}
-                className={`group/column min-w-[180px] px-2 py-2 ${
+                className={`group/column relative px-2 py-2 ${
                   draggedColumnIndex === columnIndex ? 'bg-slate-100/70 dark:bg-slate-800/60' : ''
                 }`}
                 onDragOver={(event) => {
@@ -427,6 +500,26 @@ export const ViewBlock = ({
           ))}
         </tbody>
       </table>
+      {!readOnly && view.columns.length > 0 && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-20" style={{ width: `${tableContentWidth}px` }}>
+          {columnBoundaries.map((boundary, columnIndex) => (
+            <div
+              key={`resize-boundary-${columnIndex}`}
+              className="group absolute inset-y-0 -ml-1.5 w-3"
+              style={{ left: `${boundary}px` }}
+            >
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-300/80 dark:bg-slate-600/90 group-hover:bg-blue-500" />
+              <button
+                type="button"
+                onMouseDown={(event) => startColumnResize(event, columnIndex)}
+                className="pointer-events-auto absolute inset-y-0 left-0 w-full cursor-col-resize bg-transparent"
+                title="Arrastrar columna"
+                aria-label={`Redimensionar columna ${columnIndex + 1}`}
+              />
+            </div>
+          ))}
+        </div>
+      )}
       {!readOnly && (
         <button
           type="button"

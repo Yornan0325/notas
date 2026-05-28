@@ -16,6 +16,7 @@ export interface ViewBlockContent {
   title: string;
   columns: string[];
   rows: string[][];
+  columnWidths: number[];
 }
 
 export const viewBlockTypes: ViewBlockType[] = [
@@ -67,16 +68,35 @@ export const getDefaultViewContent = (type: ViewBlockType): ViewBlockContent => 
           ['Nuevo registro', 'Pendiente', ''],
           ['', '', ''],
         ],
+  columnWidths: (
+    type === 'view_calendar'
+      ? ['Evento', 'Fecha', 'Estado']
+      : type === 'view_board'
+        ? ['Tarea', 'Estado', 'Responsable']
+        : type === 'view_timeline'
+          ? ['Actividad', 'Inicio', 'Fin']
+          : type === 'view_chart'
+            ? ['Metrica', 'Valor', 'Categoria']
+            : ['Nombre', 'Estado', 'Notas']
+  ).map(() => 280),
 });
 
 export const parseViewContent = (type: ViewBlockType, content: string): ViewBlockContent => {
   try {
     const parsed = JSON.parse(content) as Partial<ViewBlockContent>;
     if (Array.isArray(parsed.columns) && Array.isArray(parsed.rows)) {
+      const columns = parsed.columns.length ? parsed.columns : getDefaultViewContent(type).columns;
+      const parsedWidths = Array.isArray(parsed.columnWidths) ? parsed.columnWidths : [];
+      const columnWidths = columns.map((_, index) => {
+        const width = Number(parsedWidths[index]);
+        return Number.isFinite(width) && width > 0 ? width : 280;
+      });
+
       return {
         title: typeof parsed.title === 'string' ? parsed.title : getViewLabel(type),
-        columns: parsed.columns.length ? parsed.columns : getDefaultViewContent(type).columns,
+        columns,
         rows: parsed.rows.length ? parsed.rows : getDefaultViewContent(type).rows,
+        columnWidths,
       };
     }
   } catch {
@@ -149,6 +169,7 @@ const rowsToViewContent = (
       title: title?.trim() || getViewLabel(type),
       columns: Array.from({ length: maxColumns }, (_, index) => `Columna ${index + 1}`),
       rows: [fillRow(cleanedRows[0])],
+      columnWidths: Array.from({ length: maxColumns }, () => 280),
     };
   }
 
@@ -160,6 +181,7 @@ const rowsToViewContent = (
     title: title?.trim() || getViewLabel(type),
     columns: normalizedHeader,
     rows: normalizedBody,
+    columnWidths: Array.from({ length: maxColumns }, () => 280),
   };
 };
 
