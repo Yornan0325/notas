@@ -46,7 +46,7 @@ import {
 import { BlockTypeSelector } from './BlockTypeSelector';
 import type { Block } from '../type/typeScript';
 import { ViewBlock } from './ViewBlock';
-import { isViewBlockType, type ViewBlockType } from './viewBlocks';
+import { isViewBlockType, parseViewContent, type ViewBlockType } from './viewBlocks';
 import { plainTextToHtml, sanitizePastedHtml } from './richTextPaste';
 
 const CodeBlockEditor = lazy(() =>
@@ -309,6 +309,12 @@ const getCollapsedTitleFromHtml = (html: string) => {
   );
 };
 
+const getCollapsedTitleFromCode = (content: string) =>
+  content
+    .split('\n')
+    .map((line) => line.trim())
+    .find(Boolean) || '';
+
 const hasStructuredListContent = (html: string) => /<(ul|ol)\b/i.test(html);
 
 const hasRichDocumentStructure = (editor: HTMLElement) =>
@@ -387,7 +393,7 @@ export const BlockWrapper = ({
   const imageAlign = block.imageAlign || 'center';
   const imageFlow = block.imageFlow || 'stack';
   const isViewBlock = isViewBlockType(block.type);
-  const canCollapse = !isViewBlock && block.type !== 'image' && block.type !== 'code' && block.type !== 'divider';
+  const canCollapse = block.type !== 'image' && block.type !== 'divider';
   const canFavorite = true;
   const canTrackActivity = !isViewBlock && block.type !== 'image' && block.type !== 'divider';
   const hasIcon = ['todo', 'bullet_list', 'numbered_list', 'toggle_list', 'callout'].includes(block.type);
@@ -396,6 +402,12 @@ export const BlockWrapper = ({
     : undefined;
   const isAccordion = canCollapse && Boolean(block.isAccordion || block.isCollapsed);
   const isCollapsed = isAccordion && Boolean(block.isCollapsed);
+  const collapsedCodeTitle =
+    block.type === 'code' ? getCollapsedTitleFromCode(block.content) || placeholders.code : '';
+  const collapsedViewTitle = isViewBlock
+    ? parseViewContent(block.type as ViewBlockType, block.content).title?.trim() ||
+      placeholders[block.type]
+    : '';
 
   const positionBlockSelector = () => {
     if (typeof window === 'undefined') return;
@@ -1114,13 +1126,15 @@ export const BlockWrapper = ({
           <BlockTypeSelector
             currentType={block.type}
             isAccordion={isAccordion}
+            isCollapsed={isCollapsed}
+            canCollapse={canCollapse}
             onSelect={(type) => {
               onChangeType(type);
               setShowSelector(false);
             }}
-            onToggleCollapse={() => {
-              if (canCollapse) onToggleAccordion();
-            }}
+            onEnableAccordion={canCollapse ? onToggleAccordion : undefined}
+            onToggleCollapse={canCollapse ? onToggleCollapse : undefined}
+            onDisableAccordion={canCollapse ? onToggleAccordion : undefined}
             onInsertAbove={() => {
               onInsertDividerAbove();
               setShowSelector(false);
@@ -1417,15 +1431,42 @@ export const BlockWrapper = ({
         )}
 
         {isViewBlock && (
-          <ViewBlock
-            type={block.type as ViewBlockType}
-            content={block.content}
-            onUpdate={(content) => onUpdate(content)}
-            onAddView={onAddViewBelow}
-            onRemove={onRemove}
-            onFocus={onFocus}
-            readOnly={readOnly}
-          />
+          isAccordion && isCollapsed ? (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className={`flex min-h-[32px] w-full items-center gap-2 rounded-md px-1 py-1 text-left text-slate-700 ${typeStyles[block.type]}`}
+              title="Expandir contenido"
+            >
+              <ChevronRight size={16} className="shrink-0 text-slate-400" />
+              <span className="truncate">{collapsedViewTitle}</span>
+            </button>
+          ) : (
+            <div className="flex w-full items-start gap-2 rounded-md px-1 py-1.5">
+              {isAccordion && (
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={onToggleCollapse}
+                  className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-white hover:text-slate-700"
+                  title="Contraer contenido"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              )}
+              <div className="min-w-0 flex-1">
+                <ViewBlock
+                  type={block.type as ViewBlockType}
+                  content={block.content}
+                  onUpdate={(content) => onUpdate(content)}
+                  onAddView={onAddViewBelow}
+                  onRemove={onRemove}
+                  onFocus={onFocus}
+                  readOnly={readOnly}
+                />
+              </div>
+            </div>
+          )
         )}
 
         {block.type === 'divider' && (
@@ -1608,22 +1649,49 @@ export const BlockWrapper = ({
         )}
 
         {block.type !== 'image' && block.type !== 'divider' && !isViewBlock && block.type === 'code' && (
-          <Suspense
-            fallback={<div className="h-32 w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-[#404040] dark:bg-[#282828]" />}
-          >
-            <CodeBlockEditor
-              content={block.content}
-              language={block.codeLanguage}
-              isFocused={isFocused}
-              onChange={(value) => {
-                if (!readOnly) onUpdate(value);
-              }}
-              onLanguageChange={onUpdateCodeLanguage}
-              onKeyDown={onKeyDown}
-              onFocus={onFocus}
-              readOnly={readOnly}
-            />
-          </Suspense>
+          isAccordion && isCollapsed ? (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className={`flex min-h-[32px] w-full items-center gap-2 rounded-md px-1 py-1 text-left text-slate-700 ${typeStyles[block.type]}`}
+              title="Expandir contenido"
+            >
+              <ChevronRight size={16} className="shrink-0 text-slate-400" />
+              <span className="truncate">{collapsedCodeTitle}</span>
+            </button>
+          ) : (
+            <div className="flex w-full items-start gap-2 rounded-md px-1 py-1.5">
+              {isAccordion && (
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={onToggleCollapse}
+                  className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-white hover:text-slate-700"
+                  title="Contraer contenido"
+                >
+                  <ChevronDown size={16} />
+                </button>
+              )}
+              <div className="min-w-0 flex-1">
+                <Suspense
+                  fallback={<div className="h-32 w-full rounded-lg border border-slate-200 bg-slate-50 dark:border-[#404040] dark:bg-[#282828]" />}
+                >
+                  <CodeBlockEditor
+                    content={block.content}
+                    language={block.codeLanguage}
+                    isFocused={isFocused}
+                    onChange={(value) => {
+                      if (!readOnly) onUpdate(value);
+                    }}
+                    onLanguageChange={onUpdateCodeLanguage}
+                    onKeyDown={onKeyDown}
+                    onFocus={onFocus}
+                    readOnly={readOnly}
+                  />
+                </Suspense>
+              </div>
+            </div>
+          )
         )}
 
         {block.type !== 'image' && block.type !== 'divider' && !isViewBlock && block.type !== 'code' && (

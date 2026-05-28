@@ -45,7 +45,7 @@ interface TypeGroup {
 type SubmenuId = 'styles' | 'insert' | 'status';
 
 interface MainAction {
-  id: SubmenuId | 'collapse' | 'return' | 'copy' | 'delete';
+  id: SubmenuId | 'enableAccordion' | 'collapse' | 'disableAccordion' | 'return' | 'copy' | 'delete';
   label: string;
   icon: LucideIcon;
   hasSubmenu: boolean;
@@ -54,8 +54,12 @@ interface MainAction {
 export const BlockTypeSelector = ({
   currentType,
   isAccordion = false,
+  isCollapsed = false,
+  canCollapse = true,
   onSelect,
   onToggleCollapse,
+  onEnableAccordion,
+  onDisableAccordion,
   onInsertAbove,
   onInsertBelow,
   onConvertToText,
@@ -65,8 +69,12 @@ export const BlockTypeSelector = ({
 }: {
   currentType: Block['type'];
   isAccordion?: boolean;
+  isCollapsed?: boolean;
+  canCollapse?: boolean;
   onSelect: (type: Block['type']) => void;
   onToggleCollapse?: () => void;
+  onEnableAccordion?: () => void;
+  onDisableAccordion?: () => void;
   onInsertAbove?: () => void;
   onInsertBelow?: () => void;
   onConvertToText?: () => void;
@@ -120,16 +128,37 @@ export const BlockTypeSelector = ({
     { id: 'styles', label: 'Estilo de bloque', icon: Type, hasSubmenu: true },
     { id: 'status', label: 'Estado de actividad', icon: CircleDot, hasSubmenu: true },
     { id: 'insert', label: 'Insertar linea', icon: Plus, hasSubmenu: true },
-    {
-      id: 'collapse',
-      label: isAccordion ? 'Quitar acordeon' : 'Colapsar contenido',
-      icon: ChevronRightSquare,
-      hasSubmenu: false,
-    },
     { id: 'return', label: 'Convertir a texto', icon: Undo2, hasSubmenu: false },
     { id: 'copy', label: 'Copiar enlace', icon: Link, hasSubmenu: false },
     { id: 'delete', label: 'Eliminar bloque', icon: Trash2, hasSubmenu: false },
   ];
+  if (canCollapse && !isAccordion) {
+    mainActions.splice(3, 0, {
+      id: 'enableAccordion',
+      label: 'Activar acordeon',
+      icon: ChevronRightSquare,
+      hasSubmenu: false,
+    });
+  }
+
+  if (canCollapse && isAccordion) {
+    mainActions.splice(
+      3,
+      0,
+      {
+        id: 'collapse',
+        label: isCollapsed ? 'Desplegar contenido' : 'Colapsar contenido',
+        icon: ChevronRightSquare,
+        hasSubmenu: false,
+      },
+      {
+        id: 'disableAccordion',
+        label: 'Quitar acordeon',
+        icon: Undo2,
+        hasSubmenu: false,
+      }
+    );
+  }
 
   const insertOptions = [
     { label: 'Insertar arriba', icon: ArrowUp, shortcut: 'Ctrl Alt Up', onClick: onInsertAbove },
@@ -158,7 +187,9 @@ export const BlockTypeSelector = ({
             type="button"
             onClick={() => {
               if (action.hasSubmenu) setActiveSubmenu(action.id as SubmenuId);
+              if (action.id === 'enableAccordion') onEnableAccordion?.();
               if (action.id === 'collapse') onToggleCollapse?.();
+              if (action.id === 'disableAccordion') onDisableAccordion?.();
               if (action.id === 'return') onConvertToText?.();
               if (action.id === 'copy') onCopyLink?.();
               if (action.id === 'delete') onDelete?.();

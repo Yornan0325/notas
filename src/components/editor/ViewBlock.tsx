@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ChevronDown,
-  ChevronRight,
   Copy,
   Download,
   Expand,
@@ -122,8 +120,6 @@ export const ViewBlock = ({
   const [showNewView, setShowNewView] = useState(false);
   const [showTitle, setShowTitle] = useState(true);
   const [titleStyle, setTitleStyle] = useState<'large' | 'compact'>('large');
-  const [isCollapsible, setIsCollapsible] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
   const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
@@ -274,11 +270,6 @@ export const ViewBlock = ({
       setShowMenu(false);
     };
     reader.readAsText(file);
-  };
-
-  const toggleCollapseState = () => {
-    setIsCollapsible(true);
-    setIsCollapsed((value) => !value);
   };
 
   const renderTable = () => (
@@ -557,17 +548,6 @@ export const ViewBlock = ({
             <MoreVertical size={18} />
           </button>
         )}
-        {isCollapsible && (
-          <button
-            type="button"
-            onClick={toggleCollapseState}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            title={isCollapsed ? 'Expandir contenido' : 'Contraer contenido'}
-            aria-label={isCollapsed ? 'Expandir contenido' : 'Contraer contenido'}
-          >
-            {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
-          </button>
-        )}
         {showTitle && (
           <input
             value={view.title}
@@ -602,21 +582,6 @@ export const ViewBlock = ({
           >
             <Type size={19} className="text-slate-500" />
             Estilo de título
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              toggleCollapseState();
-              setShowMenu(false);
-            }}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-          >
-            {isCollapsed ? (
-              <ChevronDown size={19} className="text-slate-500" />
-            ) : (
-              <ChevronRight size={19} className="text-slate-500" />
-            )}
-            {isCollapsed ? 'Desplegar contenido' : 'Colapsar contenido'}
           </button>
           <div className="my-2 border-t border-dashed border-slate-200" />
           <button
@@ -694,7 +659,7 @@ export const ViewBlock = ({
         </div>
       )}
 
-      {!isCollapsed && renderSpecialView()}
+      {renderSpecialView()}
     </div>
   );
 };
