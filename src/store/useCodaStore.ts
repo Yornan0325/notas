@@ -68,6 +68,7 @@ interface CodaState {
   renameProjectFolder: (currentName: string, nextName: string) => void;
   removeProjectFolder: (name: string) => void;
   clearWorkspace: () => void;
+  updatePageParent: (id: string, parentId: string | null) => void;
 }
 
 const now = () => new Date().toISOString();
@@ -754,6 +755,18 @@ export const useCodaStore = create<CodaState>()(
           };
         }),
       clearWorkspace: () => set({ blocks: [], pages: [], shares: [], projectFolders: [] }),
+      updatePageParent: (id, parentId) =>
+        set((state) => {
+          if (id === parentId) return {};
+          const childrenIds = collectPageTreeIds(state.pages, id);
+          if (parentId && childrenIds.has(parentId)) return {};
+
+          return {
+            pages: state.pages.map((page) =>
+              page.id === id ? { ...page, parentId: parentId || null, updatedAt: now(), synced: false } : page
+            ),
+          };
+        }),
     }),
     { name: 'coda-storage' }
   )

@@ -65,7 +65,7 @@ export const PageSidebar = ({
   onClose?: () => void;
   readOnly?: boolean;
 }) => {
-  const { pages, blocks, addPage } = useCodaStore();
+  const { pages, blocks, addPage, updatePageParent } = useCodaStore();
   const documentRoot = getDocumentRoot(pages, docId);
   const docPages = pages.filter((page) => page.docId === docId);
   const docPageIds = new Set(docPages.map((page) => page.id));
@@ -171,7 +171,22 @@ export const PageSidebar = ({
       </div>
 
 
-      <div className="flex-1 overflow-y-auto p-2">
+      <div
+        className="flex-1 overflow-y-auto p-2"
+        onDragOver={(e) => {
+          if (readOnly) return;
+          e.preventDefault();
+        }}
+        onDrop={(e) => {
+          if (readOnly) return;
+          e.preventDefault();
+          const draggedId = e.dataTransfer.getData('text/plain');
+          if (draggedId) {
+            updatePageParent(draggedId, null);
+            toast.success('Página movida al nivel raíz');
+          }
+        }}
+      >
         {rootPages.length > 0 ? (
           <div className="space-y-1">
             {rootPages.map((page) => (
@@ -237,8 +252,10 @@ const PageItem = ({
     removePage,
     updatePageIcon,
     updatePageTitle,
+    updatePageParent,
   } = useCodaStore();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -328,9 +345,37 @@ const PageItem = ({
   return (
     <div className="relative flex flex-col">
       <div
+        draggable={!readOnly}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', page.id);
+        }}
+        onDragOver={(e) => {
+          if (readOnly) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragOver(true);
+        }}
+        onDragLeave={() => {
+          setIsDragOver(false);
+        }}
+        onDrop={(e) => {
+          if (readOnly) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragOver(false);
+
+          const draggedId = e.dataTransfer.getData('text/plain');
+          if (draggedId && draggedId !== page.id) {
+            updatePageParent(draggedId, page.id);
+            toast.success('Página movida');
+          }
+        }}
         className={cn(
           'group flex min-h-9 cursor-pointer items-center gap-1 rounded-md px-1.5 text-sm transition-colors',
-          isActive ? 'bg-slate-100 text-slate-950' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+          isActive ? 'bg-slate-100 text-slate-950' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950',
+          isDragOver && 'bg-blue-50/50 outline-dashed outline-2 outline-blue-400 dark:bg-blue-950/20'
         )}
         onClick={() => onSelectPage(page.id)}
       >

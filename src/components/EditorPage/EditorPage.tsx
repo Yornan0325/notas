@@ -45,15 +45,41 @@ const EditorPage = () => {
     [docPages, rootPage]
   );
 
+  const sortedRootPages = useMemo(() => {
+    if (!docId) return [];
+    const docPageIds = new Set(docPages.map((page) => page.id));
+    const unfilteredRootPages = docPages.filter(
+      (page) =>
+        !page.isDocumentRoot &&
+        page.id !== rootPage?.id &&
+        (!page.parentId || !docPageIds.has(page.parentId))
+    );
+
+    return unfilteredRootPages
+      .map((page) => ({
+        page,
+        index: pages.findIndex((item) => item.id === page.id),
+      }))
+      .sort((a, b) => {
+        const orderA = a.page.pageOrder ?? a.index;
+        const orderB = b.page.pageOrder ?? b.index;
+        return orderA === orderB ? a.index - b.index : orderA - orderB;
+      })
+      .map((item) => item.page);
+  }, [docPages, rootPage, docId, pages]);
+
   const visibleActivePageId = useMemo(() => {
     const activePageBelongsToDoc = internalPages.some((page) => page.id === activePageId);
     if (activePageBelongsToDoc) return activePageId;
 
     const requestedPage = internalPages.find((page) => page.id === requestedPageId);
-    return requestedPage?.id || internalPages[0]?.id || null;
-  }, [activePageId, internalPages, requestedPageId]);
+    if (requestedPage) return requestedPage.id;
+
+    return sortedRootPages[0]?.id || internalPages[0]?.id || null;
+  }, [activePageId, internalPages, requestedPageId, sortedRootPages]);
 
   const currentPage = pages.find((page) => page.id === visibleActivePageId);
+
   const currentSubpages = useMemo(
     () =>
       pages
@@ -61,11 +87,42 @@ const EditorPage = () => {
         .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || '')),
     [pages, visibleActivePageId]
   );
+
   const displayedRootPage = rootPage || currentPage;
   const isSharedFromAnotherWorkspace = Boolean(
     currentPage?.ownerWorkspaceId && currentPage.ownerWorkspaceId !== user?.email
   );
-  const isSharedReadOnly = isSharedFromAnotherWorkspace && currentPage?.sharePermission !== 'edit';
+  // Determine effective permission based on page's own permission, direct, inherited, or workspace shares
+  const { shares } = useCodaStore();
+  const effectivePermission = useMemo(() => {
+    if (!isSharedFromAnotherWorkspace) return 'edit';
+    // Page's own sharePermission field
+    if (currentPage?.sharePermission === 'edit') return 'edit';
+    // Direct page share
+    const direct = shares.find(
+      (s) => s.targetType === 'page' && s.targetId === currentPage?.id && s.permission === 'edit'
+    );
+    if (direct) return 'edit';
+    // Ancestor page shares
+    const pageMap = new Map(pages.map((p) => [p.id, p]));
+    const ancestorIds = new Set<string>();
+    let cur = pageMap.get(currentPage?.id ?? '');
+    while (cur?.parentId) {
+      ancestorIds.add(cur.parentId);
+      cur = pageMap.get(cur.parentId);
+    }
+    const inherited = shares.find(
+      (s) => s.targetType === 'page' && ancestorIds.has(s.targetId) && s.permission === 'edit'
+    );
+    if (inherited) return 'edit';
+    // Workspace share
+    const workspace = shares.find(
+      (s) => s.targetType === 'workspace' && s.docId === docId && s.permission === 'edit'
+    );
+    if (workspace) return 'edit';
+    return 'view';
+  }, [shares, currentPage?.id, docId, isSharedFromAnotherWorkspace, pages]);
+  const isSharedReadOnly = effectivePermission !== 'edit';
 
   useEffect(() => {
     const mobileViewport = window.matchMedia('(max-width: 767px)');
