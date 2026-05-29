@@ -22,6 +22,11 @@ const EditorPage = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
   );
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window === 'undefined') return 288;
+    const storedWidth = Number(window.localStorage.getItem('editor-page-sidebar-width'));
+    return Number.isFinite(storedWidth) && storedWidth >= 220 ? storedWidth : 288;
+  });
   const initializedDocIdRef = useRef<string | null>(null);
   const requestedPageId = searchParams.get('page');
 
@@ -74,6 +79,11 @@ const EditorPage = () => {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('editor-page-sidebar-width', String(Math.round(sidebarWidth)));
+  }, [sidebarWidth]);
+
+  useEffect(() => {
     if (!docId || initializedDocIdRef.current === docId) return;
     if (internalPages.length > 0) {
       initializedDocIdRef.current = docId;
@@ -99,6 +109,8 @@ const EditorPage = () => {
         docId={docId || ''}
         activePageId={visibleActivePageId}
         onSelectPage={(id) => setActivePageId(id)}
+        width={sidebarWidth}
+        onResizeWidth={setSidebarWidth}
         isCollapsed={isSidebarCollapsed}
         onClose={() => setIsSidebarCollapsed(true)}
         readOnly={isSharedReadOnly}

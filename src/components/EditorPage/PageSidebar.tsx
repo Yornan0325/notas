@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type {
+  CSSProperties,
   FocusEvent,
   KeyboardEvent,
   MouseEvent as ReactMouseEvent,
@@ -49,6 +50,8 @@ export const PageSidebar = ({
   docId,
   activePageId,
   onSelectPage,
+  width = 288,
+  onResizeWidth,
   isCollapsed = false,
   onClose,
   readOnly = false,
@@ -56,6 +59,8 @@ export const PageSidebar = ({
   docId: string;
   activePageId: string | null;
   onSelectPage: (id: string) => void;
+  width?: number;
+  onResizeWidth?: (width: number) => void;
   isCollapsed?: boolean;
   onClose?: () => void;
   readOnly?: boolean;
@@ -94,6 +99,37 @@ export const PageSidebar = ({
     closeOnMobile();
   };
 
+  const startSidebarResize = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (!onResizeWidth) return;
+    if (typeof window === 'undefined') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const startX = event.clientX;
+    const startWidth = width;
+    const minWidth = 220;
+    const maxWidth = Math.max(minWidth, window.innerWidth - 16);
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const nextWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX));
+      onResizeWidth(nextWidth);
+    };
+
+    const handleUp = () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  };
+
   if (isCollapsed) return null;
 
   return (
@@ -104,7 +140,10 @@ export const PageSidebar = ({
       aria-label="Cerrar paginas"
       onClick={onClose}
     />
-    <aside className="fixed inset-y-0 left-0 z-50 flex h-full w-[min(20rem,88vw)] shrink-0 flex-col border-r border-slate-200 bg-white shadow-xl md:static md:z-auto md:w-72 md:shadow-none">
+    <aside
+      style={{ '--editor-page-sidebar-width': `${Math.round(Math.max(220, width))}px` } as CSSProperties}
+      className="fixed inset-y-0 left-0 z-50 flex h-full w-[min(var(--editor-page-sidebar-width),calc(100vw-0.75rem))] shrink-0 flex-col border-r border-slate-200 bg-white shadow-xl md:static md:z-auto md:w-[var(--editor-page-sidebar-width)] md:shadow-none"
+    >
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
         <Link
           to="/"
@@ -125,7 +164,7 @@ export const PageSidebar = ({
 
       <div className="px-4 py-3">
         <div>
-          <h2 className="max-w-56 truncate text-sm font-semibold text-slate-950">
+          <h2 className="max-w-full truncate text-sm font-semibold text-slate-950">
             {documentRoot?.title || 'Documento'}
           </h2>
         </div>
@@ -160,6 +199,16 @@ export const PageSidebar = ({
           </div>
         )}
       </div>
+      {onResizeWidth && (
+        <button
+          type="button"
+          onMouseDown={startSidebarResize}
+          className="absolute inset-y-0 right-0 z-20 w-8 cursor-col-resize bg-transparent"
+          style={{ touchAction: 'none' }}
+          aria-label="Redimensionar sidebar"
+          title="Arrastrar para ajustar ancho"
+        />
+      )}
     </aside>
     </>
   );

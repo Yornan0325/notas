@@ -222,7 +222,7 @@ const parseTextTableRows = (text: string) => {
       .filter((row) => !row.every((cell) => /^-+$/.test(cell)));
   }
 
-  const hasCommas = lines.some((line) => line.includes(','));
+  const hasCommas = lines.every((line) => line.includes(','));
   if (hasCommas) return lines.map((line) => parseDelimitedLine(line, ','));
 
   return null;
