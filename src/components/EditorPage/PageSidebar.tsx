@@ -142,7 +142,7 @@ export const PageSidebar = ({
     />
     <aside
       style={{ '--editor-page-sidebar-width': `${Math.round(Math.max(220, width))}px` } as CSSProperties}
-      className="fixed inset-y-0 left-0 z-50 flex h-full w-[min(var(--editor-page-sidebar-width),calc(100vw-0.75rem))] shrink-0 flex-col border-r border-slate-200 bg-white shadow-xl md:static md:z-auto md:w-[var(--editor-page-sidebar-width)] md:shadow-none"
+      className="fixed inset-y-0 left-0 z-50 flex h-full w-[min(var(--editor-page-sidebar-width),calc(100vw-0.75rem))] shrink-0 flex-col border-r border-slate-200 bg-white shadow-xl md:relative md:z-auto md:w-[var(--editor-page-sidebar-width)] md:shadow-none"
     >
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
         <Link
@@ -203,11 +203,13 @@ export const PageSidebar = ({
         <button
           type="button"
           onMouseDown={startSidebarResize}
-          className="absolute inset-y-0 right-0 z-20 w-8 cursor-col-resize bg-transparent"
+          className="group/resizer absolute inset-y-0 -right-1.5 z-20 flex w-3 cursor-col-resize items-center justify-center bg-transparent"
           style={{ touchAction: 'none' }}
           aria-label="Redimensionar sidebar"
           title="Arrastrar para ajustar ancho"
-        />
+        >
+          <div className="h-full w-[2px] bg-transparent transition-colors group-hover/resizer:bg-slate-300 dark:group-hover/resizer:bg-slate-700 group-active/resizer:bg-blue-500 dark:group-active/resizer:bg-blue-400" />
+        </button>
       )}
     </aside>
     </>
