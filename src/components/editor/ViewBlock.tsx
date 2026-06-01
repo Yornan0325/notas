@@ -349,13 +349,14 @@ export const ViewBlock = ({
           {!readOnly && <col style={{ width: `${actionColumnWidth}px` }} />}
         </colgroup>
         <thead>
-          <tr className="border-b border-slate-200 text-sm font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <tr>
             {view.columns.map((column, columnIndex) => (
               <th
                 key={columnIndex}
-                className={`group/column relative px-2 py-2 ${
-                  draggedColumnIndex === columnIndex ? 'bg-slate-100/70 dark:bg-slate-800/60' : ''
+                className={`group/column relative overflow-hidden border border-slate-200 dark:border-slate-700/50 ${
+                  draggedColumnIndex === columnIndex ? 'bg-blue-50/60 dark:bg-blue-900/20' : 'bg-transparent'
                 }`}
+                style={{ width: `${normalizedColumnWidths[columnIndex]}px` }}
                 onDragOver={(event) => {
                   if (readOnly || draggedColumnIndex === null) return;
                   event.preventDefault();
@@ -366,7 +367,7 @@ export const ViewBlock = ({
                   setDraggedColumnIndex(null);
                 }}
               >
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 px-3 py-2.5">
                   {!readOnly && (
                     <button
                       type="button"
@@ -376,11 +377,11 @@ export const ViewBlock = ({
                         setDraggedColumnIndex(columnIndex);
                       }}
                       onDragEnd={() => setDraggedColumnIndex(null)}
-                      className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                      className="flex h-5 w-4 shrink-0 cursor-grab items-center justify-center rounded text-slate-300 opacity-0 group-hover/column:opacity-100 hover:bg-slate-200 hover:text-slate-500 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-400 transition-opacity"
                       title="Mover columna"
                       aria-label="Mover columna"
                     >
-                      <GripVertical size={14} />
+                      <GripVertical size={12} />
                     </button>
                   )}
                   <input
@@ -394,55 +395,52 @@ export const ViewBlock = ({
                         ),
                       })
                     }
-                    className="view-cell-input min-w-0 flex-1 bg-transparent px-1 py-1 font-medium text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
+                    className="view-cell-input min-w-0 flex-1 bg-transparent text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 outline-none ring-0 focus:outline-none focus:ring-0"
                   />
                   {!readOnly && (
                     <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/column:opacity-100 focus-within:opacity-100">
                       <button
                         type="button"
                         onClick={() => addColumn(columnIndex)}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                        className="flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                         title="Agregar columna"
                         aria-label="Agregar columna"
                       >
-                        <Plus size={14} />
+                        <Plus size={11} />
                       </button>
                       <button
                         type="button"
                         onClick={() => removeColumn(columnIndex)}
                         disabled={view.columns.length <= 1}
-                        className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:text-slate-500 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:disabled:hover:text-slate-500"
+                        className="flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400 dark:disabled:hover:text-slate-500"
                         title="Eliminar columna"
                         aria-label="Eliminar columna"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={11} />
                       </button>
                     </div>
                   )}
                 </div>
+                {/* Resize handle on the right edge of each column header except last */}
+                {!readOnly && columnIndex < view.columns.length - 1 && (
+                  <button
+                    type="button"
+                    onMouseDown={(event) => startColumnResize(event, columnIndex)}
+                    className="absolute right-0 inset-y-0 w-1 cursor-col-resize hover:bg-blue-400/40 dark:hover:bg-blue-500/40 transition-colors z-10"
+                    aria-label={`Redimensionar columna ${columnIndex + 1}`}
+                  />
+                )}
               </th>
             ))}
-            {!readOnly && (
-              <th className="w-16 px-1 py-2">
-                <button
-                  type="button"
-                  onClick={() => addColumn()}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  title="Agregar columna"
-                  aria-label="Agregar columna"
-                >
-                  <Plus size={15} />
-                </button>
-              </th>
-            )}
+            {!readOnly && <th className="border-0 bg-transparent" />}
           </tr>
         </thead>
         <tbody>
           {visibleRows.map((row, rowIndex) => (
             <tr
               key={rowIndex}
-              className={`group/row border-b border-slate-200 dark:border-slate-800 ${
-                draggedRowIndex === rowIndex ? 'bg-slate-100/70 dark:bg-slate-800/60' : ''
+              className={`group/row transition-colors hover:bg-slate-50/40 dark:hover:bg-white/[0.015] ${
+                draggedRowIndex === rowIndex ? 'bg-blue-50/40 dark:bg-blue-900/10' : ''
               }`}
               onDragOver={(event) => {
                 if (readOnly || draggedRowIndex === null) return;
@@ -455,21 +453,24 @@ export const ViewBlock = ({
               }}
             >
               {view.columns.map((_, columnIndex) => (
-                <td key={`${rowIndex}-${columnIndex}`} className="px-2 py-2 align-top">
+                <td
+                  key={`${rowIndex}-${columnIndex}`}
+                  className="px-3 py-2.5 align-middle border border-slate-200 dark:border-slate-700/50 bg-transparent"
+                >
                   <input
                     value={row[columnIndex] || ''}
                     readOnly={readOnly}
                     onChange={(event) =>
                       commit(updateCellValue(view, rowIndex, columnIndex, event.target.value))
                     }
-                    className="view-cell-input w-full bg-transparent px-1 py-1 text-sm font-medium text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
-                    placeholder="+"
+                    className="view-cell-input w-full bg-transparent text-sm text-slate-800 dark:text-slate-200 outline-none ring-0 focus:outline-none focus:ring-0 placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                    placeholder="—"
                   />
                 </td>
               ))}
               {!readOnly && (
-                <td className="w-16 px-1 py-2 align-top">
-                  <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                <td className="px-1 py-1 align-middle border-0 bg-transparent">
+                  <div className="flex items-center justify-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
                     <button
                       type="button"
                       draggable
@@ -478,21 +479,21 @@ export const ViewBlock = ({
                         setDraggedRowIndex(rowIndex);
                       }}
                       onDragEnd={() => setDraggedRowIndex(null)}
-                      className="flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                      className="flex h-6 w-6 cursor-grab items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing dark:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-400"
                       title="Mover fila"
                       aria-label="Mover fila"
                     >
-                      <GripVertical size={14} />
+                      <GripVertical size={13} />
                     </button>
-                  <button
-                    type="button"
-                    onClick={() => removeRow(rowIndex)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 hover:bg-red-50 hover:text-red-600 dark:text-slate-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                    title="Eliminar fila"
-                    aria-label="Eliminar fila"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(rowIndex)}
+                      className="flex h-6 w-6 items-center justify-center rounded text-slate-300 hover:bg-red-50 hover:text-red-500 dark:text-slate-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                      title="Eliminar fila"
+                      aria-label="Eliminar fila"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </td>
               )}
@@ -500,34 +501,15 @@ export const ViewBlock = ({
           ))}
         </tbody>
       </table>
-      {!readOnly && view.columns.length > 0 && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-20" style={{ width: `${tableContentWidth}px` }}>
-          {columnBoundaries.map((boundary, columnIndex) => (
-            <div
-              key={`resize-boundary-${columnIndex}`}
-              className="group absolute inset-y-0 -ml-1.5 w-3"
-              style={{ left: `${boundary}px` }}
-            >
-              <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-300/80 transition-colors duration-150 peer-hover:bg-slate-500 dark:bg-slate-600/90 dark:peer-hover:bg-slate-400" />
-              <button
-                type="button"
-                onMouseDown={(event) => startColumnResize(event, columnIndex)}
-                className="peer pointer-events-auto absolute inset-y-0 left-0 w-full cursor-col-resize bg-transparent"
-                title="Arrastrar columna"
-                aria-label={`Redimensionar columna ${columnIndex + 1}`}
-              />
-            </div>
-          ))}
-        </div>
-      )}
       {!readOnly && (
         <button
           type="button"
           onClick={addRow}
-          className="mt-2 flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          className="mt-1 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors"
           title="Agregar fila"
         >
-          <Plus size={18} />
+          <Plus size={13} />
+          <span>Agregar fila</span>
         </button>
       )}
     </div>
