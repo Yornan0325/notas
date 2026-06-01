@@ -146,9 +146,6 @@ export const ViewBlock = ({
   const tableContentWidth = normalizedColumnWidths.reduce((total, width) => total + width, 0);
   const actionColumnWidth = readOnly ? 0 : 64;
   const tableWidth = tableContentWidth + actionColumnWidth;
-  const columnBoundaries = normalizedColumnWidths.map((_, index) =>
-    normalizedColumnWidths.slice(0, index + 1).reduce((total, width) => total + width, 0)
-  );
   const titleClass =
     titleStyle === 'large'
       ? 'text-3xl font-bold tracking-tight'
