@@ -351,12 +351,15 @@ export const ViewBlock = ({
   const renderTable = () => (
     <div ref={tableContainerRef} className="relative overflow-x-auto">
       <table
-        className="border-collapse text-left table-fixed"
-        style={{ width: `${tableWidth}px`, minWidth: `${tableWidth}px` }}
+        className="border-collapse text-left table-auto w-full"
+        style={{ width: '100%', minWidth: `${tableWidth}px` }}
       >
         <colgroup>
           {view.columns.map((_, columnIndex) => (
-            <col key={`col-${columnIndex}`} style={{ width: `${normalizedColumnWidths[columnIndex]}px` }} />
+            <col
+              key={`col-${columnIndex}`}
+              style={{ minWidth: `${normalizedColumnWidths[columnIndex]}px`, width: 'auto' }}
+            />
           ))}
           {!readOnly && <col style={{ width: `${actionColumnWidth}px` }} />}
         </colgroup>
@@ -368,7 +371,6 @@ export const ViewBlock = ({
                 className={`group/column relative overflow-hidden border border-slate-200 dark:border-slate-700/50 ${
                   draggedColumnIndex === columnIndex ? 'bg-blue-50/60 dark:bg-blue-900/20' : 'bg-transparent'
                 }`}
-                style={{ width: `${normalizedColumnWidths[columnIndex]}px` }}
                 onDragOver={(event) => {
                   if (readOnly || draggedColumnIndex === null) return;
                   event.preventDefault();
@@ -533,7 +535,7 @@ export const ViewBlock = ({
         {view.columns.map((column, columnIndex) => (
           <div
             key={columnIndex}
-            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-950"
+            className="rounded-xl border border-slate-200 bg-transparent p-3 shadow-sm dark:border-slate-700 dark:bg-transparent"
           >
             <div className="mb-3 flex items-center gap-2">
               <input
@@ -701,7 +703,7 @@ export const ViewBlock = ({
   return (
     <div
       ref={viewBlockRef}
-      className={`relative w-full rounded-md bg-white dark:bg-transparent ${
+      className={`relative w-full rounded-md bg-transparent ${
         isFullscreen ? 'fixed inset-3 z-[150] overflow-auto p-6 shadow-2xl md:inset-8' : ''
       }`}
       onFocus={onFocus}
