@@ -122,6 +122,7 @@ export const ViewBlock = ({
   const [showTitle, setShowTitle] = useState(true);
   const [titleStyle, setTitleStyle] = useState<'large' | 'compact'>('large');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCompactTable, setIsCompactTable] = useState(false);
   const [draggedColumnIndex, setDraggedColumnIndex] = useState<number | null>(null);
   const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
   const viewBlockRef = useRef<HTMLDivElement>(null);
@@ -144,7 +145,7 @@ export const ViewBlock = ({
   );
   const tableContentWidth = normalizedColumnWidths.reduce((total, width) => total + width, 0);
   const actionColumnWidth = readOnly ? 0 : 64;
-  const tableWidth = Math.max(640, tableContentWidth + actionColumnWidth);
+  const tableWidth = tableContentWidth + actionColumnWidth;
   const columnBoundaries = normalizedColumnWidths.map((_, index) =>
     normalizedColumnWidths.slice(0, index + 1).reduce((total, width) => total + width, 0)
   );
@@ -180,6 +181,20 @@ export const ViewBlock = ({
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [showMenu, showNewView]);
+
+  useEffect(() => {
+    const node = tableContainerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      setIsCompactTable(node.clientWidth < 760 && view.columns.length > 3);
+    });
+
+    observer.observe(node);
+    setIsCompactTable(node.clientWidth < 760 && view.columns.length > 3);
+
+    return () => observer.disconnect();
+  }, [view.columns.length]);
 
   const addRow = () => {
     commit({ ...view, rows: [...view.rows, view.columns.map(() => '')] });
@@ -515,6 +530,99 @@ export const ViewBlock = ({
     </div>
   );
 
+  const renderResponsiveTable = () => (
+    <div className="grid gap-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {view.columns.map((column, columnIndex) => (
+          <div
+            key={columnIndex}
+            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-950"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <input
+                value={column}
+                readOnly={readOnly}
+                onChange={(event) =>
+                  commit({
+                    ...view,
+                    columns: view.columns.map((item, index) =>
+                      index === columnIndex ? event.target.value : item
+                    ),
+                  })
+                }
+                className="view-cell-input min-w-0 flex-1 bg-transparent text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 outline-none ring-0 focus:outline-none focus:ring-0"
+              />
+              {!readOnly && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => addColumn(columnIndex)}
+                    className="flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    title="Agregar columna"
+                    aria-label="Agregar columna"
+                  >
+                    <Plus size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeColumn(columnIndex)}
+                    disabled={view.columns.length <= 1}
+                    className="flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                    title="Eliminar columna"
+                    aria-label="Eliminar columna"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              {visibleRows.map((row, rowIndex) => (
+                <div
+                  key={rowIndex}
+                  className="rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/40"
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span>Fila {rowIndex + 1}</span>
+                    {columnIndex === 0 && !readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(rowIndex)}
+                        className="rounded px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-100 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                      >
+                        Eliminar fila
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    value={row[columnIndex] || ''}
+                    readOnly={readOnly}
+                    onChange={(event) =>
+                      commit(updateCellValue(view, rowIndex, columnIndex, event.target.value))
+                    }
+                    className="view-cell-input w-full bg-transparent px-2 py-2 text-sm text-slate-900 outline-none ring-0 focus:outline-none focus:ring-0 dark:text-slate-100"
+                    placeholder="—"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={addRow}
+          className="self-start rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Plus size={13} /> Agregar fila
+          </span>
+        </button>
+      )}
+    </div>
+  );
+
   const renderCards = () => (
     <div className="grid gap-3 md:grid-cols-2">
       {visibleRows.map((row, rowIndex) => (
@@ -586,7 +694,7 @@ export const ViewBlock = ({
   );
 
   const renderSpecialView = () => {
-    if (type === 'view_table') return renderTable();
+    if (type === 'view_table') return isCompactTable ? renderResponsiveTable() : renderTable();
     if (type === 'view_cards' || type === 'view_detail' || type === 'view_form') return renderCards();
     if (type === 'view_board') return renderBoard();
     if (type === 'view_chart') return renderChart();
