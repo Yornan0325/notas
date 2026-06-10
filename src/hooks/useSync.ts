@@ -85,7 +85,7 @@ export const useSync = () => {
     const loadRemoteWorkspace = async () => {
       hasLoadedRef.current = true;
       try {
-        const wsId = user.uid;
+        const wsId = user.email!;
         const remoteWorkspace = await loadWorkspaceFromFirebase(wsId);
         // console.log('[Sync] Remote data:', { pages: remoteWorkspace.pages.length, blocks: remoteWorkspace.blocks.length });
 
@@ -206,7 +206,7 @@ export const useSync = () => {
         return;
       }
 
-      const wsId = user.uid;
+      const wsId = user.email!;
 
       try {
         const embeddedImageBlocks = pendingBlocks.filter(

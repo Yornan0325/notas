@@ -11,30 +11,29 @@ service cloud.firestore {
     }
 
     function isOwner(workspaceId) {
-      return isAuthenticated() && request.auth.uid == workspaceId;
+      // workspaceId coincide con el email del usuario autenticado
+      return isAuthenticated() && request.auth.token.email == workspaceId;
     }
 
     function userEmail() {
       return request.auth.token.email;
     }
 
-    function userUid() {
-      return request.auth.uid;
-    }
-
     // ============================================================
-    // Workspaces
+    // Workspaces (el ID del workspace es el email del usuario)
     // ============================================================
     match /workspaces/{workspaceId} {
 
       // Solo el dueño puede leer/escribir su workspace
-      allow read, write: if isOwner(workspaceId);
+      allow read: if isAuthenticated() && (
+        isOwner(workspaceId) ||
+        exists(/databases/$(database)/documents/shares/$(workspaceId))
+      );
+      allow write: if isOwner(workspaceId);
 
       // Pages dentro del workspace
       match /pages/{pageId} {
-        // Lectura: dueño del workspace o usuario autenticado
         allow read: if isAuthenticated();
-        // Escritura: solo el dueño
         allow write: if isOwner(workspaceId);
         allow delete: if isOwner(workspaceId);
       }
@@ -48,7 +47,7 @@ service cloud.firestore {
     }
 
     // ============================================================
-    // Usuarios (perfiles)
+    // Usuarios (perfiles) — el ID del documento es el email
     // ============================================================
     match /usuarios/{email} {
       allow read: if isAuthenticated();
@@ -59,24 +58,25 @@ service cloud.firestore {
 
     // ============================================================
     // Shares (invitaciones a documentos)
+    // ownerWorkspaceId es el email del usuario que comparte
     // ============================================================
     match /shares/{shareId} {
-      // Cualquier usuario autenticado puede leer shares donde es destinatario
+      // Puede leer: el propietario o el destinatario
       allow read: if isAuthenticated() && (
         resource.data.email == userEmail() ||
-        resource.data.ownerWorkspaceId == userUid()
+        resource.data.ownerWorkspaceId == userEmail()
       );
 
-      // Crear: solo autenticado
+      // Crear: cualquier usuario autenticado
       allow create: if isAuthenticated();
 
-      // Actualizar: solo el dueño del share
+      // Actualizar: solo el dueño de la invitación
       allow update: if isAuthenticated() &&
-        resource.data.ownerWorkspaceId == userUid();
+        resource.data.ownerWorkspaceId == userEmail();
 
-      // Eliminar: solo el dueño del share
+      // Eliminar: solo el dueño de la invitación
       allow delete: if isAuthenticated() &&
-        resource.data.ownerWorkspaceId == userUid();
+        resource.data.ownerWorkspaceId == userEmail();
     }
 
     // ============================================================

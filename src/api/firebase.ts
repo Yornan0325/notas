@@ -22,7 +22,7 @@ export const getWorkspaceId = () => {
   if (!isFirebaseConfigured) return 'default';
   try {
     const auth = getFirebaseAuth();
-    return auth?.currentUser?.uid || auth?.currentUser?.email || 'default';
+    return auth?.currentUser?.email || 'default';
   } catch {
     return 'default';
   }
