@@ -56,26 +56,19 @@ export const useSync = () => {
     try {
       const auth = getFirebaseAuth();
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        const prevUid = user?.uid || user?.email;
-        const nextUid = currentUser?.uid || currentUser?.email;
-        if (nextUid && prevUid && nextUid !== prevUid) {
+        if (currentUser?.email !== user?.email) {
           clearWorkspaceRef.current();
           hasLoadedRef.current = false;
           setUser(currentUser);
         }
-        if (!currentUser) {
-          setLoading(false);
-        }
-        if (currentUser && !prevUid) {
-          setUser(currentUser);
-        }
+        setLoading(false);
       });
       return () => unsubscribe();
     } catch (e) {
       console.error('[Sync] Auth error:', e);
       setLoading(false);
     }
-  }, [clearWorkspace]);
+  }, [user?.email]);
 
   // 2. Load from Firebase (once per user session)
   useEffect(() => {

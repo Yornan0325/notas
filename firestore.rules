@@ -2,88 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ============================================================
-    // Helper functions
-    // ============================================================
-    function isAuthenticated() {
-      return request.auth != null && request.auth.uid != null;
-    }
-
-    function isOwner(workspaceId) {
-      // workspaceId coincide con el email del usuario autenticado
-      return isAuthenticated() && request.auth.token.email == workspaceId;
-    }
-
-    function userEmail() {
-      return request.auth.token.email;
-    }
-
-    // ============================================================
-    // Workspaces (el ID del workspace es el email del usuario)
-    // ============================================================
-    match /workspaces/{workspaceId} {
-
-      // Solo el dueño puede leer/escribir su workspace
-      allow read: if isAuthenticated() && (
-        isOwner(workspaceId) ||
-        exists(/databases/$(database)/documents/shares/$(workspaceId))
-      );
-      allow write: if isOwner(workspaceId);
-
-      // Pages dentro del workspace
-      match /pages/{pageId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(workspaceId);
-        allow delete: if isOwner(workspaceId);
-      }
-
-      // Blocks dentro del workspace
-      match /blocks/{blockId} {
-        allow read: if isAuthenticated();
-        allow write: if isOwner(workspaceId);
-        allow delete: if isOwner(workspaceId);
-      }
-    }
-
-    // ============================================================
-    // Usuarios (perfiles) — el ID del documento es el email
-    // ============================================================
-    match /usuarios/{email} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && userEmail() == email;
-      allow update: if isAuthenticated() && userEmail() == email;
-      allow delete: if isAuthenticated() && userEmail() == email;
-    }
-
-    // ============================================================
-    // Shares (invitaciones a documentos)
-    // ownerWorkspaceId es el email del usuario que comparte
-    // ============================================================
-    match /shares/{shareId} {
-      // Puede leer: el propietario o el destinatario
-      allow read: if isAuthenticated() && (
-        resource.data.email == userEmail() ||
-        resource.data.ownerWorkspaceId == userEmail()
-      );
-
-      // Crear: cualquier usuario autenticado
-      allow create: if isAuthenticated();
-
-      // Actualizar: solo el dueño de la invitación
-      allow update: if isAuthenticated() &&
-        resource.data.ownerWorkspaceId == userEmail();
-
-      // Eliminar: solo el dueño de la invitación
-      allow delete: if isAuthenticated() &&
-        resource.data.ownerWorkspaceId == userEmail();
-    }
-
-    // ============================================================
-    // Denegar todo lo demás por defecto
-    // ============================================================
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }
