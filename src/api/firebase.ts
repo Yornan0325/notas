@@ -20,8 +20,12 @@ const firebaseConfig = {
 
 export const getWorkspaceId = () => {
   if (!isFirebaseConfigured) return 'default';
-  const auth = getFirebaseAuth();
-  return auth?.currentUser?.email || 'default';
+  try {
+    const auth = getFirebaseAuth();
+    return auth?.currentUser?.uid || auth?.currentUser?.email || 'default';
+  } catch {
+    return 'default';
+  }
 };
 
 let app: FirebaseApp | null = null;

@@ -39,57 +39,74 @@ export const loadWorkspaceFromFirebase = async (wsId: string) => {
   return { pages, blocks };
 };
 
+const BATCH_LIMIT = 400;
+
+const chunkArray = <T>(array: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+};
+
+const cleanRecord = <T extends object>(obj: T, omitKeys: string[] = []): T =>
+  Object.fromEntries(
+    Object.entries(obj).filter(
+      ([key, value]) => value !== undefined && !omitKeys.includes(key)
+    )
+  ) as T;
+
+const findWorkspaceRef = (db: Firestore, wsId: string, ownerWorkspaceId?: string) =>
+  ownerWorkspaceId ? getWorkspaceRef(db, ownerWorkspaceId) : getWorkspaceRef(db, wsId);
+
 export const syncWorkspaceToFirebase = async (wsId: string, pages: Page[], blocks: Block[]) => {
   const { db } = getFirebaseServices();
-  const batch = writeBatch(db);
+  const skipFields = ['ownerWorkspaceId', 'sharePermission', 'sharedRootId'];
 
-  // Firestore rejects undefined values — strip them before writing
-  const clean = <T extends object>(obj: T): T =>
-    Object.fromEntries(
-      Object.entries(obj).filter(
-        ([key, value]) =>
-          value !== undefined &&
-          !['ownerWorkspaceId', 'sharePermission', 'sharedRootId'].includes(key)
-      )
-    ) as T;
+  const operations: Array<(batch: ReturnType<typeof writeBatch>) => void> = [];
 
-  batch.set(
-    getWorkspaceRef(db, wsId),
-    { id: wsId, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
+  operations.push((batch) => {
+    batch.set(getWorkspaceRef(db, wsId), { id: wsId, updatedAt: serverTimestamp() }, { merge: true });
+  });
 
   pages.forEach((page) => {
-    const wsRef = page.ownerWorkspaceId ? getWorkspaceRef(db, page.ownerWorkspaceId) : getWorkspaceRef(db, wsId);
-    batch.set(doc(collection(wsRef, 'pages'), page.id), clean(page), { merge: true });
+    const wsRef = findWorkspaceRef(db, wsId, page.ownerWorkspaceId);
+    const pageRef = doc(collection(wsRef, 'pages'), page.id);
+    operations.push((batch) => batch.set(pageRef, cleanRecord(page, skipFields), { merge: true }));
   });
 
   blocks.forEach((block) => {
-    const wsRef = block.ownerWorkspaceId ? getWorkspaceRef(db, block.ownerWorkspaceId) : getWorkspaceRef(db, wsId);
-    batch.set(doc(collection(wsRef, 'blocks'), block.id), clean(block), { merge: true });
+    const wsRef = findWorkspaceRef(db, wsId, block.ownerWorkspaceId);
+    const blockRef = doc(collection(wsRef, 'blocks'), block.id);
+    operations.push((batch) => batch.set(blockRef, cleanRecord(block, skipFields), { merge: true }));
   });
 
-  await batch.commit();
+  const chunks = chunkArray(operations, BATCH_LIMIT);
+  for (const chunk of chunks) {
+    const batch = writeBatch(db);
+    chunk.forEach((op) => op(batch));
+    await batch.commit();
+  }
 };
 
 export const syncSharesToFirebase = async (wsId: string, shares: ShareInvite[]) => {
   const { db } = getFirebaseServices();
-  const batch = writeBatch(db);
-  const clean = <T extends object>(obj: T): T =>
-    Object.fromEntries(
-      Object.entries(obj).filter(
-        ([key, value]) =>
-          value !== undefined &&
-          !['sharePermission', 'sharedRootId'].includes(key)
-      )
-    ) as T;
+  const skipFields = ['sharePermission', 'sharedRootId'];
+
+  const operations: Array<(batch: ReturnType<typeof writeBatch>) => void> = [];
 
   shares.forEach((share) => {
-    const shareData = clean({ ...share, ownerWorkspaceId: wsId });
-    batch.set(doc(sharesCollection(db), share.id), shareData, { merge: true });
+    const shareData = cleanRecord({ ...share, ownerWorkspaceId: wsId }, skipFields);
+    const shareRef = doc(sharesCollection(db), share.id);
+    operations.push((batch) => batch.set(shareRef, shareData, { merge: true }));
   });
 
-  await batch.commit();
+  const chunks = chunkArray(operations, BATCH_LIMIT);
+  for (const chunk of chunks) {
+    const batch = writeBatch(db);
+    chunk.forEach((op) => op(batch));
+    await batch.commit();
+  }
 };
 
 export const deleteFirebaseShare = async (shareId: string) => {
@@ -270,14 +287,7 @@ export const uploadBlockImage = async ({
 
 export const saveBlockToFirebase = async (wsId: string, block: Block) => {
   const { db } = getFirebaseServices();
-  const clean = <T extends object>(obj: T): T =>
-    Object.fromEntries(
-      Object.entries(obj).filter(
-        ([key, value]) =>
-          value !== undefined &&
-          !['ownerWorkspaceId', 'sharePermission', 'sharedRootId'].includes(key)
-      )
-    ) as T;
-  const wsRef = block.ownerWorkspaceId ? getWorkspaceRef(db, block.ownerWorkspaceId) : getWorkspaceRef(db, wsId);
-  await setDoc(doc(collection(wsRef, 'blocks'), block.id), clean(block), { merge: true });
+  const skipFields = ['ownerWorkspaceId', 'sharePermission', 'sharedRootId'];
+  const wsRef = findWorkspaceRef(db, wsId, block.ownerWorkspaceId);
+  await setDoc(doc(collection(wsRef, 'blocks'), block.id), cleanRecord(block, skipFields), { merge: true });
 };

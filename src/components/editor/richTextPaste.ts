@@ -1,3 +1,5 @@
+import { sanitizeHtml } from '../../lib/sanitize';
+
 const listLinePattern = /^(\s*)(?:([\u2022\u25cf\u25cb\u25aa\u25a0\u2023\u2013-])|(\d+|[a-zA-Z])[.)])\s+(.+)$/;
 const leadingListMarkerPattern = /^(\s*)(?:[\u2022\u25cf\u25cb\u25aa\u25a0\u2023\u2013-]|(?:\d+|[a-zA-Z])[.)])\s*/;
 
@@ -236,61 +238,31 @@ const mergeAdjacentLists = (root: HTMLElement) => {
 };
 
 export const sanitizePastedHtml = (html: string) => {
-  const parsed = new DOMParser().parseFromString(html, 'text/html');
-  const blockedTags = ['script', 'style', 'meta', 'link', 'iframe', 'object', 'embed'];
-  const semanticTags = new Set([
-    'a', 'b', 'blockquote', 'br', 'code', 'del', 'div', 'em', 'h1', 'h2', 'h3', 'h4',
-    'hr', 'i', 'img', 'li', 'ol', 'p', 'pre', 's', 'strong', 'table', 'tbody', 'td',
-    'th', 'thead', 'tr', 'u', 'ul',
-  ]);
-  const allowedAttributes: Record<string, string[]> = {
-    a: ['href', 'target', 'rel'],
-    img: ['src', 'alt'],
-    li: ['value'],
-    ol: ['start', 'type'],
-  };
+  // Primera capa: DOMPurify contra XSS
+  const cleanHtml = sanitizeHtml(html);
 
+  // Segunda capa: normalización semántica del contenido pegado
+  const parsed = new DOMParser().parseFromString(cleanHtml, 'text/html');
+
+  // Bloquear tags peligrosos adicionales
+  const blockedTags = ['script', 'style', 'meta', 'link', 'iframe', 'object', 'embed', 'svg', 'math'];
   blockedTags.forEach((tag) => {
     parsed.querySelectorAll(tag).forEach((node) => node.remove());
   });
 
-  parsed.body.querySelectorAll('*').forEach((element) => {
-    const tagName = element.tagName.toLowerCase();
-    const allowedForTag = allowedAttributes[tagName] || [];
-
-    Array.from(element.attributes).forEach((attribute) => {
-      const name = attribute.name.toLowerCase();
-      const value = attribute.value.trim().toLowerCase();
-
-      if (!allowedForTag.includes(name) || name.startsWith('on')) {
-        element.removeAttribute(attribute.name);
-        return;
-      }
-
-      if ((name === 'href' || name === 'src') && value.startsWith('javascript:')) {
-        element.removeAttribute(attribute.name);
-      }
-    });
-
-    if (tagName === 'a' && element.getAttribute('href')) {
-      element.setAttribute('target', '_blank');
-      element.setAttribute('rel', 'noreferrer');
-    }
-  });
-
+  // Remover imágenes inline base64 (podrían ser muy grandes)
   parsed.body.querySelectorAll('img').forEach((image) => {
     if (/^data:image\//i.test(image.getAttribute('src') || '')) image.remove();
   });
+
+  // Normalizar h4 -> h3
   parsed.body.querySelectorAll('h4').forEach((heading) => {
     const replacement = parsed.createElement('h3');
     replacement.append(...Array.from(heading.childNodes));
     heading.replaceWith(replacement);
   });
-  parsed.body.querySelectorAll('*').forEach((element) => {
-    if (!semanticTags.has(element.tagName.toLowerCase())) {
-      element.replaceWith(...Array.from(element.childNodes));
-    }
-  });
+
+  // Normalizar listas
   parsed.body.querySelectorAll('li').forEach((item) => removeLeadingListMarker(item, parsed.body));
   normalizePseudoLists(parsed.body);
   cleanPastedListItems(parsed.body);

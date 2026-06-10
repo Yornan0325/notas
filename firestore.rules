@@ -1,18 +1,89 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ============================================================
+    // Helper functions
+    // ============================================================
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(workspaceId) {
+      return isAuthenticated() && request.auth.uid == workspaceId;
+    }
+
+    function userEmail() {
+      return request.auth.token.email;
+    }
+
+    function userUid() {
+      return request.auth.uid;
+    }
+
+    // ============================================================
+    // Workspaces
+    // ============================================================
+    match /workspaces/{workspaceId} {
+
+      // Solo el dueño puede leer/escribir su workspace
+      allow read, write: if isOwner(workspaceId);
+
+      // Pages dentro del workspace
+      match /pages/{pageId} {
+        // Lectura: dueño del workspace o usuario autenticado
+        allow read: if isAuthenticated();
+        // Escritura: solo el dueño
+        allow write: if isOwner(workspaceId);
+        allow delete: if isOwner(workspaceId);
+      }
+
+      // Blocks dentro del workspace
+      match /blocks/{blockId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(workspaceId);
+        allow delete: if isOwner(workspaceId);
+      }
+    }
+
+    // ============================================================
+    // Usuarios (perfiles)
+    // ============================================================
+    match /usuarios/{email} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && userEmail() == email;
+      allow update: if isAuthenticated() && userEmail() == email;
+      allow delete: if isAuthenticated() && userEmail() == email;
+    }
+
+    // ============================================================
+    // Shares (invitaciones a documentos)
+    // ============================================================
+    match /shares/{shareId} {
+      // Cualquier usuario autenticado puede leer shares donde es destinatario
+      allow read: if isAuthenticated() && (
+        resource.data.email == userEmail() ||
+        resource.data.ownerWorkspaceId == userUid()
+      );
+
+      // Crear: solo autenticado
+      allow create: if isAuthenticated();
+
+      // Actualizar: solo el dueño del share
+      allow update: if isAuthenticated() &&
+        resource.data.ownerWorkspaceId == userUid();
+
+      // Eliminar: solo el dueño del share
+      allow delete: if isAuthenticated() &&
+        resource.data.ownerWorkspaceId == userUid();
+    }
+
+    // ============================================================
+    // Denegar todo lo demás por defecto
+    // ============================================================
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2026, 6, 5);
+      allow read, write: if false;
     }
   }
 }

@@ -54,6 +54,7 @@ import {
   type ViewBlockType,
 } from './viewBlocks';
 import { plainTextToHtml, sanitizePastedHtml } from './richTextPaste';
+import { sanitizeHtml } from '../../lib/sanitize';
 
 const CodeBlockEditor = lazy(() =>
   import('./CodeBlockEditor').then((module) => ({ default: module.CodeBlockEditor }))
@@ -443,7 +444,7 @@ export const BlockWrapper = ({
     const editor = richTextRef.current;
     if (!editor || document.activeElement === editor) return;
     if (editor.innerHTML !== block.content) {
-      editor.innerHTML = block.content;
+      editor.innerHTML = sanitizeHtml(block.content);
     }
   }, [block.content, isCollapsed]);
 
@@ -452,7 +453,7 @@ export const BlockWrapper = ({
 
     const editor = richTextRef.current;
     if (editor.innerHTML !== block.content) {
-      editor.innerHTML = block.content;
+      editor.innerHTML = sanitizeHtml(block.content);
     }
 
     if (document.activeElement === editor) return;
@@ -621,12 +622,20 @@ export const BlockWrapper = ({
     });
   };
 
+  const execRichTextCommand = (command: string, value?: string): boolean => {
+    if (!document.queryCommandSupported(command)) {
+      console.warn(`Rich text command "${command}" no soportado en este navegador`);
+      return false;
+    }
+    return document.execCommand(command, false, value);
+  };
+
   const applyRichTextCommand = (command: string, value?: string) => {
     const editor = richTextRef.current;
     if (!editor) return;
 
     editor.focus();
-    document.execCommand(command, false, value);
+    execRichTextCommand(command, value);
     onUpdate(editor.innerHTML);
     updateToolbarPosition();
   };
@@ -640,7 +649,7 @@ export const BlockWrapper = ({
     if (!editor.contains(range.commonAncestorContainer)) return;
 
     const selectedText = selection.toString();
-    document.execCommand('insertHTML', false, `<code>${escapeHtml(selectedText)}</code>`);
+    execRichTextCommand('insertHTML', `<code>${escapeHtml(selectedText)}</code>`);
     onUpdate(editor.innerHTML);
     updateToolbarPosition();
   };
@@ -650,7 +659,7 @@ export const BlockWrapper = ({
     if (!editor) return;
 
     editor.focus();
-    document.execCommand('insertHTML', false, sanitizePastedHtml(html));
+    execRichTextCommand('insertHTML', sanitizePastedHtml(html));
     onUpdate(editor.innerHTML);
     setToolbarPosition(null);
   };
@@ -661,7 +670,7 @@ export const BlockWrapper = ({
     if (!editor || !html.trim()) return;
 
     editor.focus();
-    document.execCommand('insertHTML', false, html);
+    execRichTextCommand('insertHTML', html);
     onUpdate(editor.innerHTML);
     setToolbarPosition(null);
   };
@@ -671,7 +680,7 @@ export const BlockWrapper = ({
     if (!editor) return;
 
     editor.focus();
-    document.execCommand('insertHTML', false, '<br>');
+    execRichTextCommand('insertHTML', '<br>');
     onUpdate(editor.innerHTML);
     setToolbarPosition(null);
   };
@@ -681,7 +690,7 @@ export const BlockWrapper = ({
     if (!editor) return;
 
     editor.focus();
-    document.execCommand('insertParagraph');
+    execRichTextCommand('insertParagraph');
     onUpdate(editor.innerHTML);
     setToolbarPosition(null);
   };
@@ -1063,6 +1072,7 @@ export const BlockWrapper = ({
               showSelector || isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             }`}
             title="Arrastrar para mover; clic para opciones"
+            aria-label="Opciones del bloque"
           >
             <GripVertical size={16} />
           </button>
@@ -1739,6 +1749,10 @@ export const BlockWrapper = ({
                   className={`rich-text-editor min-h-[20px] min-w-0 flex-1 whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
                   contentEditable={!readOnly}
                   suppressContentEditableWarning
+                  role="textbox"
+                  aria-multiline="true"
+                  aria-label={`Editando ${placeholders[block.type] || block.type}`}
+                  aria-readonly={readOnly}
                   data-placeholder={placeholders[block.type]}
                   onBeforeInput={readOnly ? undefined : handleRichTextBeforeInput}
                   onInput={handleRichTextInput}
@@ -1757,6 +1771,10 @@ export const BlockWrapper = ({
               className={`rich-text-editor min-h-[20px] w-full whitespace-pre-wrap break-words bg-transparent py-0 leading-tight transition-all focus:outline-none empty:before:text-slate-300 empty:before:content-[attr(data-placeholder)] ${typeStyles[block.type]}`}
               contentEditable={!readOnly}
               suppressContentEditableWarning
+              role="textbox"
+              aria-multiline="true"
+              aria-label={`Editando ${placeholders[block.type] || block.type}`}
+              aria-readonly={readOnly}
               data-placeholder={placeholders[block.type]}
               onBeforeInput={readOnly ? undefined : handleRichTextBeforeInput}
               onInput={handleRichTextInput}

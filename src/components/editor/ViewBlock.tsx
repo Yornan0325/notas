@@ -14,6 +14,7 @@ import {
   Type,
 } from 'lucide-react';
 import { NewViewPicker } from './NewViewPicker';
+import { DynamicTableView } from './dynamicTable';
 import {
   getViewLabel,
   parseViewContent,
@@ -693,11 +694,13 @@ export const ViewBlock = ({
   );
 
   const renderSpecialView = () => {
-    if (type === 'view_table') return isCompactTable ? renderResponsiveTable() : renderTable();
+    if (type === 'view_table') {
+      return <DynamicTableView initialView={view} onCommit={onUpdate} readOnly={readOnly} />;
+    }
     if (type === 'view_cards' || type === 'view_detail' || type === 'view_form') return renderCards();
     if (type === 'view_board') return renderBoard();
     if (type === 'view_chart') return renderChart();
-    return renderTable();
+    return isCompactTable ? renderResponsiveTable() : renderTable();
   };
 
   return (

@@ -44,6 +44,8 @@ export const useSync = () => {
   const knownBlockIds = useRef<Map<string, RemoteItemMeta>>(new Map());
   const knownPageIds = useRef<Map<string, RemoteItemMeta>>(new Map());
   const knownShareIds = useRef<Set<string>>(new Set());
+  const clearWorkspaceRef = useRef(clearWorkspace);
+  clearWorkspaceRef.current = clearWorkspace;
 
   // 1. Auth listener
   useEffect(() => {
@@ -54,14 +56,18 @@ export const useSync = () => {
     try {
       const auth = getFirebaseAuth();
       const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        // console.log('[Sync] Auth state changed:', currentUser?.email ?? 'no user');
-        if (currentUser?.email !== user?.email) {
-          clearWorkspace();
+        const prevUid = user?.uid || user?.email;
+        const nextUid = currentUser?.uid || currentUser?.email;
+        if (nextUid && prevUid && nextUid !== prevUid) {
+          clearWorkspaceRef.current();
           hasLoadedRef.current = false;
           setUser(currentUser);
         }
         if (!currentUser) {
           setLoading(false);
+        }
+        if (currentUser && !prevUid) {
+          setUser(currentUser);
         }
       });
       return () => unsubscribe();
@@ -69,7 +75,7 @@ export const useSync = () => {
       console.error('[Sync] Auth error:', e);
       setLoading(false);
     }
-  }, [user?.email, clearWorkspace]);
+  }, [clearWorkspace]);
 
   // 2. Load from Firebase (once per user session)
   useEffect(() => {
@@ -78,9 +84,8 @@ export const useSync = () => {
 
     const loadRemoteWorkspace = async () => {
       hasLoadedRef.current = true;
-      // console.log('[Sync] Loading workspace for:', user.email);
       try {
-        const wsId = user.email!;
+        const wsId = user.uid;
         const remoteWorkspace = await loadWorkspaceFromFirebase(wsId);
         // console.log('[Sync] Remote data:', { pages: remoteWorkspace.pages.length, blocks: remoteWorkspace.blocks.length });
 
@@ -158,9 +163,15 @@ export const useSync = () => {
     loadRemoteWorkspace();
   }, [user, setBlocks, setPages, setShares]);
 
-  // 3. Sync local changes to Firebase
+  // 3. Sync local changes to Firebase with debounce
   useEffect(() => {
     if (!isFirebaseConfigured || !user || loading) return;
+
+    const handleSyncError = (error: unknown) => {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('[Sync] Failed to sync. Full error:', error);
+      toast.error(`Error al guardar: ${msg.slice(0, 80)}`, { duration: 6000 });
+    };
 
     const performSync = async () => {
       let pendingBlocks = blocks.filter(b => !b.synced && canSyncRemoteItem(b));
@@ -195,11 +206,7 @@ export const useSync = () => {
         return;
       }
 
-      const wsId = user.email!;
-      console.log('[Sync] Uploading to Firebase...', {
-        pendingPages: pendingPages.length,
-        pendingBlocks: pendingBlocks.length,
-      });
+      const wsId = user.uid;
 
       try {
         const embeddedImageBlocks = pendingBlocks.filter(
@@ -270,20 +277,26 @@ export const useSync = () => {
         }]));
         knownShareIds.current = currentShareIds;
 
-        console.log('[Sync] Saved successfully.');
         toast.success('Guardado', { id: 'sync-success', duration: 1500, position: 'bottom-right' });
       } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        console.error('[Sync] Failed to sync. Full error:', error);
-        toast.error(`Error al guardar: ${msg.slice(0, 80)}`, { duration: 6000 });
+        handleSyncError(error);
       }
     };
 
-    window.addEventListener('online', performSync);
-    const timeoutId = window.setTimeout(performSync, 1500);
+    // Debounce: esperar 3s de inactividad antes de sincronizar
+    const debounceMs = 3000;
+    const debounceTimer = window.setTimeout(performSync, debounceMs);
+
+    // Sincronizar inmediatamente cuando se recupera la conexión
+    const handleOnline = () => {
+      window.clearTimeout(debounceTimer);
+      performSync().catch(handleSyncError);
+    };
+    window.addEventListener('online', handleOnline);
+
     return () => {
-      window.removeEventListener('online', performSync);
-      window.clearTimeout(timeoutId);
+      window.clearTimeout(debounceTimer);
+      window.removeEventListener('online', handleOnline);
     };
   }, [blocks, pages, shares, markAsSynced, markPagesAsSynced, markSharesAsSynced, user, loading]);
 

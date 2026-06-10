@@ -17,6 +17,10 @@ export interface ViewBlockContent {
   columns: string[];
   rows: string[][];
   columnWidths: number[];
+  columnIds?: string[];
+  rowIds?: string[];
+  columnTypes?: Array<'text' | 'select' | 'checkbox'>;
+  columnOptions?: Record<string, string[]>;
 }
 
 export const viewBlockTypes: ViewBlockType[] = [
@@ -97,6 +101,23 @@ export const parseViewContent = (type: ViewBlockType, content: string): ViewBloc
         columns,
         rows: parsed.rows.length ? parsed.rows : getDefaultViewContent(type).rows,
         columnWidths,
+        columnIds: Array.isArray(parsed.columnIds) ? parsed.columnIds.map(String) : undefined,
+        rowIds: Array.isArray(parsed.rowIds) ? parsed.rowIds.map(String) : undefined,
+        columnTypes: Array.isArray(parsed.columnTypes)
+          ? parsed.columnTypes.filter(
+              (value): value is 'text' | 'select' | 'checkbox' =>
+                value === 'text' || value === 'select' || value === 'checkbox'
+            )
+          : undefined,
+        columnOptions:
+          parsed.columnOptions && typeof parsed.columnOptions === 'object'
+            ? Object.entries(parsed.columnOptions).reduce<Record<string, string[]>>((acc, [key, value]) => {
+                if (Array.isArray(value)) {
+                  acc[key] = value.map(String).filter(Boolean);
+                }
+                return acc;
+              }, {})
+            : undefined,
       };
     }
   } catch {
